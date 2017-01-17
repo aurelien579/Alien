@@ -1,14 +1,17 @@
 #include <kernel/io.h>
+#include <boot/console.h>
 
-extern void console_clear();
-extern void console_putchar(char *s);
+void putc(char c)
+{
+    console_putchar(c);
+}
 
 void puts(char* s)
 {
     while (*s != '\0')
     {
+        putc(*s);
         s++;
-        console_putchar(s);
     }
 }
 

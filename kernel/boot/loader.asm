@@ -1,21 +1,28 @@
 global loader
 extern kernel_main
 
-MODULEALIGN equ  1<<0
-MEMINFO     equ  1<<1
-FLAGS       equ  MODULEALIGN | MEMINFO
-MAGIC       equ  0x1BADB002
-CHECKSUM    equ -(MAGIC + FLAGS)
+MB_MAGIC        equ  0x1BADB002
+MB_MODALIGN     equ  1<<0
+MB_MEMINFO      equ  1<<1
+MB_FLAGS        equ  MB_MODALIGN | MB_MEMINFO
+MB_CHECKSUM     equ -(MB_MAGIC + MB_FLAGS)
 
 ; This is the virtual base address of kernel space. It must be used to
 ; convert virtual addresses into physical addresses until paging is
 ; enabled. Note that this is not the virtual address where the kernel
 ; image itself is loaded -- just the amount that must be subtracted from
 ; a virtual address to get a physical address.
+global KERNEL_VIRTUAL_BASE
 KERNEL_VIRTUAL_BASE equ 0xC0000000                  ; 3GB
 KERNEL_PAGE_NUMBER  equ (KERNEL_VIRTUAL_BASE >> 22) ; Page directory index of
                                                     ; kernel's 4MB PTE.
 KERNEL_STACKSIZE    equ 0x4000
+
+section .multiboot
+align 0x1000
+    dd MB_MAGIC
+    dd MB_FLAGS
+    dd MB_CHECKSUM
 
 
 section .data
@@ -36,13 +43,6 @@ boot_page_directory:
     ; This page directory entry defines a 4MB page containing the kernel.
     dd 0x00000083
     times (1024 - KERNEL_PAGE_NUMBER - 1) dd 0  ; Pages after the kernel image.
-
-
-section .multiboot
-align 0x1000
-    dd MAGIC
-    dd FLAGS
-    dd CHECKSUM
 
 section .text
 align 0x4
@@ -92,7 +92,6 @@ higher_half_loader:
 
     call  kernel_main       ; call kernel proper
     jmp $
-
 
 section .bss
 align 0x20

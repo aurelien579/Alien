@@ -14,8 +14,13 @@ OBJECTS = \
 	boot/loader.o \
 	boot/kernel.o \
 	boot/gdt.o \
-	core/console.o \
+	boot/gdt_asm.o \
+	boot/idt.o \
+	boot/idt_asm.o \
+	boot/console.o \
+	boot/paging.o \
 	lib/io.o \
+	lib/printf.o \
 	lib/string.o
 
 $(KERNEL_OUT): $(OBJECTS) linker.ld
