@@ -199,7 +199,8 @@ void idt_install()
 
 void isr_handler(struct isr_stack stack)
 {
-    puts ("isr\n");
+    printf("int_no: %d\n", stack.int_no);
+    while(1);
 }
 
 void irq_handler(struct irq_stack stack)

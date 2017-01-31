@@ -19,6 +19,8 @@ OBJECTS = \
 	boot/idt_asm.o \
 	boot/console.o \
 	boot/paging.o \
+	boot/paging_asm.o \
+	core/mm.o \
 	lib/io.o \
 	lib/printf.o \
 	lib/string.o

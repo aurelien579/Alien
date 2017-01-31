@@ -94,13 +94,17 @@ struct mb_info
     u16 vbe_interface_len;
 };
 
+#define MB_MMAP_NEXT(mmap) \
+    (struct mb_mmap_entry*) (((u32)mmap) + mmap->size + sizeof (mmap->size))
+
+
 struct mb_mmap_entry
 {
     u32 size;
     u32 base_low, base_high;
     u32 len_low, len_high;
-    #define MULTIBOOT_MEMORY_AVAILABLE 1
-    #define MULTIBOOT_MEMORY_RESERVED  2
+    #define MB_MEM_FREE 1
+    #define MB_MEM_RESERVED  2
     u32 type;
 } __attribute__((packed));
 
