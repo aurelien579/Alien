@@ -35,9 +35,6 @@ struct pt
     struct pt_entry entries[1024];
 } __attribute__((packed));
 
-struct pd* kpd;
-struct pd* current_pd;
-
 static inline vaddr_t vaddr(paddr_t phys)
 {
     return phys + kernel_info.kernel_vbase;
@@ -48,8 +45,8 @@ static inline paddr_t paddr(vaddr_t virt)
     return virt - kernel_info.kernel_vbase;
 }
 
-void init_paging(u32 kernel_end);
-//void map_page(struct pd* dir, u32 page, u32 virt, u8 flags);
+void init_paging();
+vaddr_t kalloc_page();
 void switch_page_dir(struct pd* dir);
 
 #endif

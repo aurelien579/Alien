@@ -42,12 +42,17 @@ get_boot_info(struct boot_info *info, struct mb_info *mbi)
     return 0;
 }
 
+void user_mode_test()
+{
+    asm("movl $0x6482, %eax");
+    while(1);
+}
+
 void
 kernel_main(paddr_t addr, u32 magic)
 {
     extern u32 KERNEL_VIRTUAL_BASE;
-    kernel_info.kernel_vbase = (vaddr_t) &KERNEL_VIRTUAL_BASE;
-
+    kernel_info.kernel_vbase = (u32) &KERNEL_VIRTUAL_BASE;
     cls();
 
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
@@ -62,6 +67,14 @@ kernel_main(paddr_t addr, u32 magic)
     printf("Available memory : %d MB\n", kernel_info.mem_len / (1024*1024));
     printf("kernel_end : 0x%x\n", kernel_info.kernel_end);
     init_paging(kernel_info.kernel_end);
+
+    struct pd* pd;
+    u32 user_base = create_user_pd(pd, 4096);
+    printf("user pd : 0x%x\n", user_base);
+
+    memcpy(user_base, user_mode_test, 4096);
+
+
 
     puts("Boot !");
 }

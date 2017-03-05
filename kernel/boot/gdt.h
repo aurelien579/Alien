@@ -3,8 +3,6 @@
 
 #include <types.h>
 
-#define GDT_SIZE 3
-
 #define K_CODE_SEL 0x08
 #define K_DATA_SEL 0x10
 #define U_CODE_SEL 0x18
