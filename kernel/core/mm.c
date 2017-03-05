@@ -43,6 +43,7 @@ u32 init_mm(u32 mem_len)
     /* Reserve memory for the blocks */
     free_mem_start += n_blocks * sizeof (struct mm_block);
     align (free_mem_start, 4096);
+    printf("free_mem_start : %x\n", free_mem_start);
 
     /* Initialize the blocks */
     struct mm_block* block = first_block;

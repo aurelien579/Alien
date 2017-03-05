@@ -197,6 +197,18 @@ void idt_install()
     asm("sti");
 }
 
+/*static inline void
+page_fault_handler(struct isr_stack stack)
+{
+    if (stack.err_code & 1 == 1) {
+        while(1);
+    } else {
+        printf("Not handled page fault\n");
+        while(1);
+    }
+}
+*/
+
 void isr_handler(struct isr_stack stack)
 {
     printf("int_no: %d\n", stack.int_no);

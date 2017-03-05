@@ -6,13 +6,15 @@
 #include "gdt.h"
 #include "idt.h"
 
-void panic(char* msg)
+void
+panic(char* msg)
 {
     printf("[PANIC] %s\n", msg);
     while (1);
 }
 
-errno_t get_boot_info(struct boot_info *info, struct mb_info *mbi)
+int
+get_boot_info(struct boot_info *info, struct mb_info *mbi)
 {
     if (MB_CHECK_FLAG (mbi->flags, 2))
         info->cmdline = (char*) vaddr(mbi->cmdline);
@@ -37,10 +39,11 @@ errno_t get_boot_info(struct boot_info *info, struct mb_info *mbi)
     else
         return ERR_MBFLAGS;
 
-    return ERR_NO;
+    return 0;
 }
 
-void kernel_main(paddr_t addr, u32 magic)
+void
+kernel_main(paddr_t addr, u32 magic)
 {
     extern u32 KERNEL_VIRTUAL_BASE;
     kernel_info.kernel_vbase = (vaddr_t) &KERNEL_VIRTUAL_BASE;
@@ -50,14 +53,17 @@ void kernel_main(paddr_t addr, u32 magic)
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
         panic("Invalid multiboot flag !");
 
-    if (get_boot_info(&kernel_info, (struct mb_info*) vaddr(addr)) != ERR_NO)
+    if (get_boot_info(&kernel_info, (struct mb_info*) vaddr(addr)) < 0)
         panic("Can't get boot informations from multiboot informations");
 
     gdt_install();
     idt_install();
 
     printf("Available memory : %d MB\n", kernel_info.mem_len / (1024*1024));
+    printf("kernel_end : 0x%x\n", kernel_info.kernel_end);
     init_paging(kernel_info.kernel_end);
+
+    map_page(kpd, 300 * 4096, 0x10000, PE_PRESENT | PE_RW);
 
     puts("Boot !");
 }

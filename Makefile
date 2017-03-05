@@ -5,7 +5,7 @@ all: $(ISO_FILE)
 $(ISO_FILE): kernel
 	mkdir -p $(ISO_DIR)/boot/grub
 	cp config/menu.lst $(ISO_DIR)/boot/grub/
-	cp dependencies/stage2_eltorito $(ISO_DIR)/boot/grub/
+	cp deps/stage2_eltorito $(ISO_DIR)/boot/grub/
 	cp $(KERNEL_DIR)$(KERNEL_OUT) $(ISO_DIR)/boot/kernel.bin
 
 	genisoimage -R                          \

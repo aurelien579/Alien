@@ -23,10 +23,10 @@ struct gdt_ptr
 static struct gdt_entry gdt[GDT_SIZE];
 static struct gdt_ptr gp;
 
-void gdt_set_gate(u32 num, u32 base, u32 limit, u8 access, u8 gran)
+void
+gdt_set_gate(u32 num, u32 base, u32 limit, u8 access, u8 gran)
 {
-    if (num >= GDT_SIZE)
-    {
+    if (num >= GDT_SIZE) {
         puts("[ERROR] gdt_set_gate: Can't set gdt gate above size.");
         return;
     }
@@ -42,7 +42,8 @@ void gdt_set_gate(u32 num, u32 base, u32 limit, u8 access, u8 gran)
     gdt[num].access = access;
 }
 
-void gdt_install()
+void
+gdt_install()
 {
     gdt_set_gate(0, 0, 0, 0, 0);
     gdt_set_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
