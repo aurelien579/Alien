@@ -49,7 +49,7 @@ static inline paddr_t paddr(vaddr_t virt)
 }
 
 void init_paging(u32 kernel_end);
-void map_page(struct pd* dir, u32 page, u32 virt, u8 flags);
+//void map_page(struct pd* dir, u32 page, u32 virt, u8 flags);
 void switch_page_dir(struct pd* dir);
 
 #endif

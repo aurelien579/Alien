@@ -63,7 +63,5 @@ kernel_main(paddr_t addr, u32 magic)
     printf("kernel_end : 0x%x\n", kernel_info.kernel_end);
     init_paging(kernel_info.kernel_end);
 
-    map_page(kpd, 300 * 4096, 0x10000, PE_PRESENT | PE_RW);
-
     puts("Boot !");
 }

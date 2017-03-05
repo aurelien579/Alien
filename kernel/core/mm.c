@@ -43,7 +43,6 @@ u32 init_mm(u32 mem_len)
     /* Reserve memory for the blocks */
     free_mem_start += n_blocks * sizeof (struct mm_block);
     align (free_mem_start, 4096);
-    printf("free_mem_start : %x\n", free_mem_start);
 
     /* Initialize the blocks */
     struct mm_block* block = first_block;
@@ -113,6 +112,7 @@ u32 used_memory()
 }
 
 /**
+ * Must only be called from paging module !!!
  * Allocate @n consecutives memory blocks and return the PHYSICAL base of the
  * first block.
  */
