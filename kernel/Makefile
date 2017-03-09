@@ -20,10 +20,12 @@ OBJECTS = \
 	boot/console.o \
 	boot/paging.o \
 	boot/paging_asm.o \
-	core/mm.o \
+	boot/task_asm.o \
+	boot/vm86.o \
 	lib/io.o \
 	lib/printf.o \
-	lib/string.o
+	lib/string.o \
+	core/mm.o
 
 $(KERNEL_OUT): $(OBJECTS) linker.ld
 	$(LD) -T linker.ld -o $@ $(LFLAGS) $(OBJECTS)

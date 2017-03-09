@@ -8,6 +8,38 @@
 #define U_CODE_SEL 0x18
 #define U_DATA_SEL 0x20
 
+struct tss_entry
+{
+   u32 prev_tss;   // The previous TSS - if we used hardware task switching this would form a linked list.
+   u32 esp0;       // The stack pointer to load when we change to kernel mode.
+   u32 ss0;        // The stack segment to load when we change to kernel mode.
+   u32 esp1;       // everything below here is unusued now..
+   u32 ss1;
+   u32 esp2;
+   u32 ss2;
+   u32 cr3;
+   u32 eip;
+   u32 eflags;
+   u32 eax;
+   u32 ecx;
+   u32 edx;
+   u32 ebx;
+   u32 esp;
+   u32 ebp;
+   u32 esi;
+   u32 edi;
+   u32 es;
+   u32 cs;
+   u32 ss;
+   u32 ds;
+   u32 fs;
+   u32 gs;
+   u32 ldt;
+   u16 trap;
+   u16 iomap_base;
+   u32 bitmap[32];
+} __attribute__((packed));
+
 /**
  * Set the gdt gate @num with the attributes passed
  * @param num the num of the gate to set

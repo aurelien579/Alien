@@ -3,6 +3,8 @@
 
 #include <types.h>
 
+#define EMBFLAGS -11
+
 #define MB_CHECK_FLAG(flags, bit)   (flags & (1 << bit))
 
 #define MULTIBOOT_HEADER_MAGIC                  0x1BADB002

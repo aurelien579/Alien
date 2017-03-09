@@ -1,40 +1,7 @@
-#include <kernel/paging.h>
-#include <kernel/kernel.h>
-#include <kernel/io.h>
-#include <kernel/core/mm.h>
-
-#define PAGE_SIZE 4096
-
-static int
-map_page(struct pd* dir, u32 frame, u32 virt, u8 flags);
-
-/**
- * Identity map [0x0; kernel_end] -> [0xC0000000; 0xC0000000 + kernel_end]
- */
-/*void
-init_paging(u32 kernel_len)
-{
-    u32 total_frame_count = kernel_info.mem_len / PAGE_SIZE;
-    if (total_frame_count * PAGE_SIZE < kernel_info.mem_len)
-        total_frame_count++;
-
-    kpd = (struct pd*) vaddr(alloc_blocks(1));
-
-    u32 kernel_frame_count = kernel_len / PAGE_SIZE;
-    if (kernel_frame_count * PAGE_SIZE < kernel_len)
-        kernel_frame_count++;
-
-    u32 total_pt_count = (total_frame_count) / 1024;
-    if (total_pt_count * 1024 < total_frame_count)
-        total_pt_count++;
-
-    for (u32 i = 0; i < kernel_frame_count + total_pt_count + 1; i++) {
-        map_page(kpd, i * 4096, i * 4096 + kernel_info.kernel_vbase, PE_PRESENT | PE_RW);
-    }
-
-    switch_page_dir(kpd);
-}
-*/
+#include <alien/boot/paging.h>
+#include <alien/kernel.h>
+#include <alien/io.h>
+#include <alien/string.h>
 
 #define align(a, b) \
     if (a % b != 0) \
@@ -43,204 +10,286 @@ init_paging(u32 kernel_len)
 #define updiv(a, b) \
     (((a) + (b) - 1) / (b))
 
-struct kernel_heap_info {
-    u32 frame_count;
-    u32 bitmap_size;
-    u32 base;
-    u8 *bitmap;
-};
+#define MAX_PAGE_COUNT          (512*1024*1024 / 4096)
+#define KERNEL_PD_INDEX         PD_INDEX(kinfo.vbase)
 
-struct kernel_heap_info heap_info;
+#define TEMP_PAGE_PT_INDEX      1023
+#define TEMP_PAGE_VADDR         ((PD_INDEX(kinfo.vbase) << 22) + (1023 << 12))
+#define TEMP_PAGE_PADDR         TEMP_PAGE_VADDR - kinfo.vbase
 
-static inline int
-kheap_is_free(vaddr_t addr)
+#define NO_PAGE_LEFT 1
+#define PT_NOTPRESENT -154
+
+static struct table* current_pd;
+
+static u8 *_bitmap;
+static u32 _last_page_used;
+static u32 _bitmap_size;
+static u32 _total_page_count;
+static u32 _kernel_page_count;
+static u32 _kernel_entry_flags = PE_PRESENT | PE_RW;
+
+
+static inline void
+_entry_set_base(struct page_entry *entry, page_t base)
 {
-    addr = (addr - kernel_info.kernel_vbase) >> 12;
-    return heap_info.bitmap[(addr)/8] & (addr % 8);
+    entry->base = ((base) >> 12);
+}
+
+static inline page_t
+_entry_get_base(const struct page_entry *entry)
+{
+    return (entry->base << 12);
+}
+
+static inline u32
+_entry_get_vbase(const struct page_entry *entry)
+{
+    return _entry_get_base(entry) + kinfo.vbase;
+}
+
+static inline u8
+_entry_is_present(struct page_entry *entry)
+{
+    return (entry->flags & PE_PRESENT) == 1;
 }
 
 static inline void
-kheap_setused(vaddr_t addr)
+_create_entry(struct page_entry *e, u32 base, u8 flags)
 {
-    addr = (addr - kernel_info.kernel_vbase) >> 12;
-    heap_info.bitmap[(addr)/8] &= (addr % 8);
+    _entry_set_base(e, base);
+    e->flags = flags;
+}
+
+static inline u8
+_is_page_used(page_t page)
+{
+    /* Special cases */
+    if (page == TEMP_PAGE_PADDR)
+        return 1;
+
+    u32 page_nbr = page / PAGE_SIZE;
+    return (_bitmap[page_nbr / 8] & (1 << (page_nbr % 8))) != 0;
 }
 
 static inline void
-kheap_free(vaddr_t addr)
+_set_page_used(page_t page)
 {
-    addr = (addr - kernel_info.kernel_vbase) >> 12;
-    heap_info.bitmap[(addr)/8] ^= ~(addr % 8);
-}
+    u32 page_nbr = page / PAGE_SIZE;
 
-static u32
-kheap_alloc()
-{
-    for (u32 i = 0; i < heap_info.bitmap_size; i++) {
-        if (heap_info.bitmap[i] != 0xFF) {
-            for (u8 j = 0; j < 8; j++) {
-                if ((heap_info.bitmap[i] & (1 << j)) == 0) {
-                    heap_info.bitmap[i] |= (1 << j);
-                    return (u32) heap_info.base + ((j + i * 8) * PAGE_SIZE);
-                }
-            }
-        }
+    _bitmap[page_nbr / 8] |= (1 << (page_nbr % 8));
+
+    if (page > _last_page_used) {
+        _last_page_used = page;
     }
+}
+
+
+/**
+ * Reserve a page on the bitmap. Do not map the page on any page dir ! Don't use
+ * the returned page as it, you must map it first !
+ */
+page_t
+_get_page()
+{
+    page_t page = 0;
+
+    int i = 0;
+    while(_bitmap[i] == 0xFF) {
+        page += (8 * PAGE_SIZE);
+        i++;
+    }
+
+    while (_is_page_used(page) == 1) {
+        page += PAGE_SIZE;
+    }
+
+    _set_page_used(page);
+    return page;
+}
+
+/**
+ * Write in the paging structures the mapping of the page to the vaddr. The page
+ * table corresponding to the vaddr must exists and be mapped. Will crash the
+ * kernel if not mapped !!
+ */
+static void
+__do_kernel_mapping(page_t page, u32 vaddr)
+{
+    struct table* t = (struct table*)
+                        _entry_get_vbase(&kpd.entries[PD_INDEX(vaddr)]);
+    _create_entry(&t->entries[PT_INDEX(vaddr)], page, _kernel_entry_flags);
+}
+
+
+/**
+ * Initialize a new page table in the kernel's page directory. When called, all
+ * accessible vaddrs can be used : it actually use the reserved temp page in order
+ * to do the mapping.
+ * First, map the newly reserved page on the temp vaddr then write to the page
+ * table. Add an entry to map the reserved page on itself.
+ * Then, create the necessary entry in the kernel page directory.
+ */
+static int
+_init_kernel_page_table(page_t page)
+{
+    u32 pd_index = PD_INDEX(page + kinfo.vbase);
+    page_t new_page;
+    struct table *t;
+
+    if ((new_page = _get_page()) == NO_PAGE_LEFT)
+        return -1; /* Not enought memory */
+
+    __do_kernel_mapping(new_page, TEMP_PAGE_VADDR);
+
+    t = (struct table*) TEMP_PAGE_VADDR;
+
+    memset(t, 0, 4096);
+
+    kprintf("init : %d, page : 0x%x\n", pd_index, new_page);
+    _create_entry(&kpd.entries[PD_INDEX(new_page + kinfo.vbase)], new_page,
+                    _kernel_entry_flags);
+
+    _create_entry(&t->entries[PT_INDEX(new_page + kinfo.vbase)], new_page,
+                    _kernel_entry_flags);
 
     return 0;
 }
 
-static struct pd __attribute__ ((aligned (4096))) kpd;
-static struct pd* current_pd;
+static int
+_map_kernel_page(page_t page)
+{
+    vaddr_t vaddr = page + kinfo.vbase;
+
+    /* Check if asking mapping on the temp page */
+    if (PD_INDEX(vaddr) == KERNEL_PD_INDEX &&
+        PT_INDEX(vaddr) == TEMP_PAGE_PT_INDEX)
+    {
+        return -1;
+    }
+
+    /* Handle missing page table */
+    if (!_entry_is_present(&kpd.entries[PD_INDEX(vaddr)]))
+        return PT_NOTPRESENT;
+
+    __do_kernel_mapping(page, vaddr);
+
+    return 0;
+}
+
+static inline u8
+_pt_present(page_t page)
+{
+    return _entry_is_present(&kpd.entries[PD_INDEX(page + kinfo.vbase)]);
+}
+
+void*
+alloc_kpage()
+{
+    page_t page = _get_page();
+    if (page == 0)
+        return (void*) 0;
+
+    if (!_pt_present(page)) {
+        if (_init_kernel_page_table(page) < 0) {
+            return (void*) 0;
+        }
+    }
+
+    if (_map_kernel_page(page) < 0)
+        kprintf("map_kernel_page error\n");
+
+    return (void*) (page + kinfo.vbase);
+}
 
 void
 init_paging()
 {
-    u32 base;
-    u32 kernel_pt_count;
-    u32 kernel_frame_count;
+    page_t page_buffer[MAX_PAGE_COUNT];
+    _total_page_count = updiv(kinfo.memlen, PAGE_SIZE);
+    _bitmap_size = updiv(_total_page_count, 8);
 
-    /* Initialize bitmap */
-    heap_info.frame_count = updiv(kernel_info.mem_len - kernel_info.kernel_end,
-                                  PAGE_SIZE);
-    /* Keep some space for the bitmap */
-    heap_info.frame_count -= updiv(updiv(heap_info.frame_count, 8), PAGE_SIZE);
-    heap_info.bitmap_size = updiv(heap_info.frame_count, 8);
+    kinfo.len += _bitmap_size * sizeof(u8); /* 'Statically' alloc space in the kernel */
+    _bitmap = (u8*) kinfo.vbase + kinfo.len;
 
-    heap_info.bitmap = (u8*) (kernel_info.kernel_end + kernel_info.kernel_vbase);
-    heap_info.base = (u32) heap_info.bitmap + heap_info.bitmap_size * sizeof(u8);
+    _kernel_page_count = updiv(kinfo.len, PAGE_SIZE);
 
-    align(heap_info.base, PAGE_SIZE);
+    if (_kernel_page_count > MAX_PAGE_COUNT)
+        panic("too large kernel...\n");
 
-    /* Initialize kernel pagedir */
-
-    kernel_pt_count = updiv((heap_info.base - kernel_info.kernel_vbase), (PAGE_SIZE * 1024));
-    kernel_frame_count = updiv((heap_info.base - kernel_info.kernel_vbase), PAGE_SIZE);
-    kernel_frame_count += kernel_pt_count;
-
-    for (u32 i = PD_INDEX(kernel_info.kernel_vbase);
-         i < PD_INDEX(kernel_info.kernel_vbase) + kernel_pt_count;
-         i++) {
-        if ((base = kheap_alloc()) == 0) {
-            panic("kheap_alloc error\n");
-        }
-
-        kpd.entries[i].base = (base - kernel_info.kernel_vbase) >> 12;
-        kpd.entries[i].flags = PE_PRESENT | PE_RW;
+    for (u32 i = 0; i < _kernel_page_count + 1; i++) {
+        page_buffer[i] = _get_page();
     }
 
-    for (u32 i = 0; i < kernel_frame_count; i++) {
-        if (map_page(&kpd, i * PAGE_SIZE, i * PAGE_SIZE + kernel_info.kernel_vbase,
-                 PE_PRESENT | PE_RW) < 0) {
-            panic("map_page error\n");
-        }
+    memset(&kpd, 0, 4096);
+
+    struct table *kpt = (struct table*)
+                            (_kernel_page_count * PAGE_SIZE + kinfo.vbase);
+
+    memset(kpt, 0, 4096);
+
+    _create_entry(&kpd.entries[KERNEL_PD_INDEX],
+                  _kernel_page_count * PAGE_SIZE,
+                  _kernel_entry_flags);
+
+    for (u32 i = 0; i < _kernel_page_count + 1; i++) {
+        _map_kernel_page(page_buffer[i]);
     }
 
     switch_page_dir(&kpd);
 }
 
-u32
-alloc_page()
-{
-    u32 frame;
-
-    if ((frame = kheap_alloc()) == 0) {
-        return 0;
-    }
-    if (map_page(&kpd, frame - kernel_info.kernel_vbase, frame, PE_PRESENT | PE_RW)) {
-        return 0;
-    }
-    return frame;
-}
-
-u32
-create_user_pd(struct pd* dir, u32 size)
-{
-    u32 table_base;
-    u32 frame_count;
-    u32 pt_count;
-    u32 first_frame;
-    u32 frame;
-
-    if ((dir = (struct pd*) alloc_page()) == 0) {
-        panic("alloc_page error in create_user_pd\n");
-    }
-
-    frame_count = updiv(size, PAGE_SIZE);
-    pt_count = updiv(frame_count, 1024);
-
-    for (u32 i = 0; i < pt_count; i++) {
-        if ((table_base = alloc_page()) < 0) {
-            panic("alloc_page error in create_user_pd\n");
-        }
-
-        dir->entries[i].base = (table_base - kernel_info.kernel_vbase) >> 12;
-        dir->entries[i].flags = PE_PRESENT | PE_RW | PE_USER;
-    }
-
-    frame = alloc_page();
-    first_frame = frame;
-    for (u32 i = 0; i < frame_count; i++) {
-        map_page(dir, frame - kernel_info.kernel_vbase, i * 4096,
-                 PE_PRESENT | PE_RW | PE_USER);
-        frame = alloc_page();
-    }
-
-    return first_frame;
-}
-
 void
-switch_page_dir(struct pd* dir)
+switch_page_dir(struct table* dir)
 {
-    extern void __switch_page_dir(paddr_t addr);
+    extern void __switch_page_dir(u32 paddr);
 
-    __switch_page_dir(paddr((vaddr_t) dir));
+    __switch_page_dir(((u32)dir) - kinfo.vbase);
 
     current_pd = dir;
 }
 
-/**
- * return -1 if page table not present
- */
-static int
-map_page(struct pd* dir, u32 frame, u32 virt, u8 flags)
+struct table*
+create_user_pagedir()
 {
-    struct pt* table;
+    struct table* dir;
 
-    if ((dir->entries[PD_INDEX(virt)].flags & PE_PRESENT) == 0)
-        return -1;
-
-    table = (struct pt*) ((dir->entries[PD_INDEX(virt)].base << 12)
-            + kernel_info.kernel_vbase);
-
-    table->entries[PT_INDEX(virt)].flags = flags;
-    table->entries[PT_INDEX(virt)].base = (frame & 0xFFFFF000) >> 12;
-
-    return 0;
-}
-
-/**
- * Allocate a page in the kernel space (ie. above KERNEL_OFFSET)
- * @return virtual adress of the page or zero if not found
- */
-/*vaddr_t
-kalloc_page()
-{
-    struct pt *table;
-    u32 virt;
-
-    for (u32 i = PD_INDEX(KERNEL_OFFSET); i < 1024; i++) {
-        if (kpd->entries[i].base != 0) {
-            table = (struct pt*) vaddr(kpd->entries[i].base << 12);
-            for (u32 j = 0; j < 1024; j++) {
-                if ((table->entries[j].flags & PE_PRESENT) == 0) {
-                    virt = (i << 22) + (j << 12);
-                    map_page(kpd, virt - KERNEL_OFFSET, virt, PE_PRESENT | PE_RW);
-                    return virt;
-                }
-            }
-        }
+    if ((dir = alloc_kpage()) == 0) {
+        return 0;
     }
 
-    return 0;
-}*/
+    memcpy(dir, &kpd, 1024 * sizeof(struct page_entry));
+
+    return dir;
+}
+
+int
+user_pd_map(struct table *dir, page_t page, u32 vaddr)
+{
+    struct table *pt;
+
+    if (vaddr >= kinfo.vbase) {
+        return -1;
+    }
+
+    if (!_entry_is_present(&dir->entries[PD_INDEX(vaddr)])) {
+        if ((pt = (struct table*) alloc_kpage()) == 0) {
+            return -1;
+        }
+        _create_entry(&dir->entries[PD_INDEX(vaddr)],
+                      ((u32)pt) - kinfo.vbase,
+                      PE_PRESENT | PE_RW | PE_USER);
+    }
+
+    pt = (struct table*) _entry_get_vbase(&dir->entries[PD_INDEX(vaddr)]);
+    _create_entry(&pt->entries[PT_INDEX(vaddr)], page, PE_PRESENT | PE_RW | PE_USER);
+
+    return 1;
+}
+
+void
+user_id_map(struct table* dir)
+{
+    for (int i = 0; i < 1023; i++)
+        user_pd_map(dir, PAGE_SIZE * i, PAGE_SIZE * i);
+}

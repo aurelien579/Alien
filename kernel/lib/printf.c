@@ -1,5 +1,5 @@
 #include <stdarg.h>
-#include <kernel/io.h>
+#include <alien/io.h>
 
 static void printchar(char **str, int c)
 {
@@ -9,7 +9,7 @@ static void printchar(char **str, int c)
         ++(*str);
     }
     else
-        putc(c);
+        kputc(c);
 }
 
 #define PAD_RIGHT 1
@@ -155,7 +155,7 @@ static int print(char **out, const char *format, va_list args )
     return pc;
 }
 
-int printf(const char *format, ...)
+int kprintf(const char *format, ...)
 {
     va_list args;
 
@@ -163,10 +163,10 @@ int printf(const char *format, ...)
     return print(0, format, args);
 }
 
-int sprintf(char *out, const char *format, ...)
+int ksprintf(char *out, const char *format, ...)
 {
-        va_list args;
+    va_list args;
 
-        va_start( args, format );
-        return print( &out, format, args );
+    va_start( args, format );
+    return print( &out, format, args );
 }

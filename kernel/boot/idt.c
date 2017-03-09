@@ -1,13 +1,8 @@
 #include "idt.h"
 #include "gdt.h"
 
-#include <kernel/kernel.h>
-#include <kernel/io.h>
-
-#define IDT_EF_TASK 0x05
-#define IDT_EF_INT  0x0E
-#define IDT_EF_TRAP 0x0F
-#define IDT_EF_P    0x80
+#include <alien/kernel.h>
+#include <alien/io.h>
 
 #define MASTER_IRQ_COMMAND  0x20
 #define MASTER_IRQ_DATA     0x21
@@ -113,7 +108,7 @@ void idt_set_gate(u32 num, u32 offset, u8 selector, u8 flags)
 {
     if (num >= IDT_SIZE)
     {
-        puts("[ERROR] idt_set_gate: Can't set idt gate above size.");
+        kputs("[ERROR] idt_set_gate: Can't set idt gate above size.");
         return;
     }
 
@@ -127,6 +122,8 @@ void idt_set_gate(u32 num, u32 offset, u8 selector, u8 flags)
 
 void idt_install()
 {
+    asm("cli");
+
     idt_set_gate(0, (u32) isr0, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     idt_set_gate(1, (u32) isr1, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     idt_set_gate(2, (u32) isr2, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
@@ -197,21 +194,13 @@ void idt_install()
     asm("sti");
 }
 
-/*static inline void
-page_fault_handler(struct isr_stack stack)
-{
-    if (stack.err_code & 1 == 1) {
-        while(1);
-    } else {
-        printf("Not handled page fault\n");
-        while(1);
-    }
-}
-*/
-
 void isr_handler(struct isr_stack stack)
 {
-    printf("int_no: %d\n", stack.int_no);
+    kprintf("int_no: %d\n", stack.int_no);
+    if (stack.int_no == 14) {
+
+        kprintf("    page fault: %d\n", stack.err_code);
+    }
     while(1);
 }
 
@@ -243,15 +232,3 @@ void enable_irq(u32 irq)
         outb (SLAVE_IRQ_DATA, mask - (1 << irq));
     }
 }
-
-/*
-void register_irq(u32 irq, irq_handler_t handler)
-{
-    struct irq_desc* desc = irq_descriptors[irq];
-    while (desc->next != 0)
-        desc = desc-next;
-
-    desc->next = kmalloc(sizeof(struct irq_desc));
-    desc = desc->next;
-    desc->handler = handler;
-}*/

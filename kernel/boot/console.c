@@ -1,7 +1,7 @@
-#include <boot/console.h>
-#include <kernel/io.h>
-#include <kernel/string.h>
-#include <kernel/kernel.h>
+#include <alien/boot/console.h>
+#include <alien/io.h>
+#include <alien/string.h>
+#include <alien/kernel.h>
 #include <types.h>
 
 static u16 *console_buffer = (u16*) 0xC00B8000;

@@ -1,7 +1,7 @@
 #include "gdt.h"
-#include <kernel/io.h>
+#include <alien/io.h>
 
-#define GDT_SIZE 5
+#define GDT_SIZE 6
 
 /* Defined in gdt_asm.asm */
 extern void gdt_flush(u32 gp);
@@ -22,6 +22,7 @@ struct gdt_ptr
     u32 base;
 } __attribute__((packed));
 
+
 static struct gdt_entry gdt[GDT_SIZE];
 static struct gdt_ptr gp;
 
@@ -29,7 +30,7 @@ void
 gdt_set_gate(u32 num, u32 base, u32 limit, u8 access, u8 gran)
 {
     if (num >= GDT_SIZE) {
-        puts("[ERROR] gdt_set_gate: Can't set gdt gate above size.\n");
+        kputs("[ERROR] gdt_set_gate: Can't set gdt gate above size.\n");
         return;
     }
 
@@ -51,7 +52,7 @@ gdt_install()
     gdt_set_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
     gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
     gdt_set_gate(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);
-    gdt_set_gate(4, 0, 0xFFFFFFFF, 0xF6, 0xCF);
+    gdt_set_gate(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
 
     gp.base = (u32) gdt;
     gp.limit = GDT_SIZE * sizeof(struct gdt_entry) - 1;

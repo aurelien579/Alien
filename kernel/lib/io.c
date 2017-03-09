@@ -1,21 +1,21 @@
-#include <kernel/io.h>
-#include <boot/console.h>
+#include <alien/io.h>
+#include <alien/boot/console.h>
 
-void putc(char c)
+void kputc(char c)
 {
     console_putchar(c);
 }
 
-void puts(char* s)
+void kputs(char* s)
 {
     while (*s != '\0')
     {
-        putc(*s);
+        kputc(*s);
         s++;
     }
 }
 
-void cls()
+void kcls()
 {
     console_clear();
 }

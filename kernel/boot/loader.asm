@@ -48,7 +48,7 @@ section .text
 align 0x4
 
 ; setting up entry point for linker
-loader equ (_loader - 0xC0000000)
+loader equ (_loader - KERNEL_VIRTUAL_BASE)
 global loader
 
 _loader:
@@ -72,6 +72,8 @@ _loader:
     lea ecx, [higher_half_loader]
     jmp ecx                         ; NOTE: Must be absolute jump!
 
+extern _kernel_end
+kernel_end equ (_kernel_end - KERNEL_VIRTUAL_BASE)
 higher_half_loader:
     ; Unmap the identity-mapped first 4MB of physical address space.
     ; It should not be needed anymore.
@@ -84,15 +86,20 @@ higher_half_loader:
     ; business with virtual-to-physical address translation should be necessary.
     ; We now have a higher-half kernel.
     mov esp, kernel_stack + KERNEL_STACKSIZE    ; Set up the stack
+
+    push kernel_end
+    push KERNEL_VIRTUAL_BASE
     push eax                                    ; Pass Multiboot magic number
 
     ; Pass Multiboot info structure
     ; WARNING: This is a physical address and may not be in the first 4MB!
+    add ebx, KERNEL_VIRTUAL_BASE
     push ebx
 
     call  kernel_main       ; call kernel proper
     jmp $
 
+global kernel_stack
 section .bss
 align 0x20
 kernel_stack:

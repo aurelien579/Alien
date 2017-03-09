@@ -1,80 +1,79 @@
-#include <kernel/io.h>
-#include <kernel/paging.h>
-#include <boot/multiboot.h>
-#include <kernel/core/mm.h>
-#include <kernel/kernel.h>
+#include <alien/io.h>
+#include <alien/kernel.h>
+
+#include <alien/boot/paging.h>
+#include <alien/boot/multiboot.h>
+#include <alien/mm.h>
+
 #include "gdt.h"
 #include "idt.h"
+#include "vm86.h"
 
 void
 panic(char* msg)
 {
-    printf("[PANIC] %s\n", msg);
+    kprintf("[PANIC] %s\n", msg);
     while (1);
 }
 
 int
-get_boot_info(struct boot_info *info, struct mb_info *mbi)
+parse_boot_info(struct mb_info *mbi)
 {
     if (MB_CHECK_FLAG (mbi->flags, 2))
-        info->cmdline = (char*) vaddr(mbi->cmdline);
-    else
-        info->cmdline = (char*) 0;
+        kinfo.cmdline = (char*) (mbi->cmdline + kinfo.vbase);
 
     if (MB_CHECK_FLAG (mbi->flags, 6))
     {
-        mbi->mmap_addr = vaddr(mbi->mmap_addr);
+        mbi->mmap_addr = mbi->mmap_addr + kinfo.vbase;
         struct mb_mmap_entry *mmap = (struct mb_mmap_entry *) mbi->mmap_addr;
 
         while ((u32) mmap < mbi->mmap_addr + mbi->mmap_length)
         {
             if (mmap->type == MB_MEM_FREE && mmap->base_low >= 0x100000)
-            {
-                info->kernel_end = (paddr_t) init_mm(0x100000 + mmap->len_low);
-                info->mem_len = (u32) mmap->base_low + mmap->len_low;
-            }
+                kinfo.memlen = (u32) mmap->base_low + mmap->len_low;
             mmap = MB_MMAP_NEXT (mmap);
         }
     }
     else
-        return ERR_MBFLAGS;
+        return EMBFLAGS;
 
     return 0;
 }
 
-void user_mode_test()
+void
+user_test()
 {
-    asm("movl $0x6482, %eax");
+    asm("movl $0x6482, %ecx");
     while(1);
 }
 
+extern void vm86_set_video_mode();
+
 void
-kernel_main(paddr_t addr, u32 magic)
+kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len)
 {
-    extern u32 KERNEL_VIRTUAL_BASE;
-    kernel_info.kernel_vbase = (u32) &KERNEL_VIRTUAL_BASE;
-    cls();
+    kinfo.vbase = vbase;
+    kinfo.len = len;
+
+    kcls();
 
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
         panic("Invalid multiboot flag !");
 
-    if (get_boot_info(&kernel_info, (struct mb_info*) vaddr(addr)) < 0)
+    if (parse_boot_info(mb_info) < 0)
         panic("Can't get boot informations from multiboot informations");
 
     gdt_install();
     idt_install();
 
-    printf("Available memory : %d MB\n", kernel_info.mem_len / (1024*1024));
-    printf("kernel_end : 0x%x\n", kernel_info.kernel_end);
-    init_paging(kernel_info.kernel_end);
+    kprintf("Available memory : %d MB\n", kinfo.memlen / (1024 * 1024));
+    kprintf("kernel_end : 0x%x\n", kinfo.len);
+    init_paging();
 
-    struct pd* pd;
-    u32 user_base = create_user_pd(pd, 4096);
-    printf("user pd : 0x%x\n", user_base);
+    //init_kheap();
 
-    memcpy(user_base, user_mode_test, 4096);
+    init_vm86();
+    vm86exec(&vm86_set_video_mode, 500);
 
-
-
-    puts("Boot !");
+    kputs("Boot !");
 }
