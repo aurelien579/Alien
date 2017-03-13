@@ -22,9 +22,11 @@ OBJECTS = \
 	boot/paging_asm.o \
 	boot/task_asm.o \
 	boot/vm86.o \
+	boot/task.o \
 	lib/io.o \
 	lib/printf.o \
 	lib/string.o \
+	core/vga.o \
 	core/mm.o
 
 $(KERNEL_OUT): $(OBJECTS) linker.ld

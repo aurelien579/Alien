@@ -189,18 +189,24 @@ void idt_install()
     ip.base = (u32) idt;
     ip.limit = sizeof (struct idt_entry) * IDT_SIZE - 1;
     idt_flush((u32) &ip);
-    enable_irq(1);
+    //enable_irq(1);
 
     asm("sti");
+}
+
+void dump_regs(struct isr_stack stack)
+{
+    kprintf("=== DUMP REGISTERS ===\n");
+    kprintf("eax: 0x%x, ebx: 0x%x, ecx: 0x%x, edx: 0x%x\n", stack.eax, stack.ebx, stack.ecx, stack.edx);
+    kprintf("esi: 0x%x, edi: 0x%x, esp: 0x%x, ebp: 0x%x\n", stack.esi, stack.edi, stack.esp, stack.ebp);
+    kprintf("eip: 0x%x, cs: 0x%x, eflags: 0x%x, useresp: 0x%x, ss: 0x%x\n", stack.eip, stack.cs, stack.eflags, stack.useresp, stack.ss);
 }
 
 void isr_handler(struct isr_stack stack)
 {
     kprintf("int_no: %d\n", stack.int_no);
-    if (stack.int_no == 14) {
-
-        kprintf("    page fault: %d\n", stack.err_code);
-    }
+    kprintf("    errcode: 0x%x\n", stack.err_code);
+    dump_regs(stack);
     while(1);
 }
 
@@ -210,6 +216,10 @@ void irq_handler(struct irq_stack stack)
     if (stack.irq >= 8)
         outb(0xA0, 0x20);
     outb(0x20, 0x20);
+
+    if (stack.irq == 0) {
+        //kprintf("tick\n");
+    }
 
     struct irq_desc* desc = &irq_descriptors[stack.irq];
     while (desc->next != 0)

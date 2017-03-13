@@ -62,7 +62,6 @@ ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
 
-IRQ 0
 IRQ 1
 IRQ 2
 IRQ 3
@@ -132,3 +131,17 @@ irq_common:
     add esp, 4
     sti
     iret
+
+global irq0
+extern sched
+irq0:
+    cli
+
+    pusha
+    mov eax, 0x10
+    mov ds, eax
+    mov es, eax
+    mov gs, eax
+    mov fs, eax
+
+    call sched

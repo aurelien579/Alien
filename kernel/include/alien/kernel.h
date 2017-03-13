@@ -12,6 +12,10 @@ struct kernel_info
     u32 vbase;          /* Virtual base of the higher half kernel */
 };
 
+struct regs {
+    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
+} __attribute__((packed));
+
 struct kernel_info kinfo;
 
 void panic(char* msg);

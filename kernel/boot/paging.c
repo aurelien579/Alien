@@ -211,6 +211,7 @@ init_paging()
 
     kinfo.len += _bitmap_size * sizeof(u8); /* 'Statically' alloc space in the kernel */
     _bitmap = (u8*) kinfo.vbase + kinfo.len;
+    memset(_bitmap, 0, _bitmap_size * sizeof(u8));
 
     _kernel_page_count = updiv(kinfo.len, PAGE_SIZE);
 

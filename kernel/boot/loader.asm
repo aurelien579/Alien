@@ -16,14 +16,13 @@ global KERNEL_VIRTUAL_BASE
 KERNEL_VIRTUAL_BASE equ 0xC0000000                  ; 3GB
 KERNEL_PAGE_NUMBER  equ (KERNEL_VIRTUAL_BASE >> 22) ; Page directory index of
                                                     ; kernel's 4MB PTE.
-KERNEL_STACKSIZE    equ 0x4000
+KERNEL_STACKSIZE    equ 0x8000
 
 section .multiboot
 align 0x1000
     dd MB_MAGIC
     dd MB_FLAGS
     dd MB_CHECKSUM
-
 
 section .data
 align 0x1000
@@ -48,12 +47,9 @@ section .text
 align 0x4
 
 ; setting up entry point for linker
-loader equ (_loader - KERNEL_VIRTUAL_BASE)
+;loader equ (_hloader - KERNEL_VIRTUAL_BASE)
 global loader
-
-_loader:
-    ; NOTE: Until paging is set up, the code must be position-independent and
-    ; use physical addresses, not virtual ones!
+loader:
     mov ecx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
     mov cr3, ecx                    ; Load Page Directory Base Register.
 
@@ -85,7 +81,7 @@ higher_half_loader:
     ; linked to this address, so no more position-independent code or funny
     ; business with virtual-to-physical address translation should be necessary.
     ; We now have a higher-half kernel.
-    mov esp, kernel_stack + KERNEL_STACKSIZE    ; Set up the stack
+    mov esp, kernel_stack                       ; Set up the stack
 
     push kernel_end
     push KERNEL_VIRTUAL_BASE
@@ -102,5 +98,6 @@ higher_half_loader:
 global kernel_stack
 section .bss
 align 0x20
+kernel_stack_start:
+    resb KERNEL_STACKSIZE
 kernel_stack:
-    resb KERNEL_STACKSIZE      ; reserve 16k stack on a uint64_t boundary

@@ -37,7 +37,7 @@ struct tss_entry
    u32 ldt;
    u16 trap;
    u16 iomap_base;
-   u32 bitmap[32];
+   u8 bitmap[32];
 } __attribute__((packed));
 
 /**

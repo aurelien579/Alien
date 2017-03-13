@@ -9,6 +9,8 @@
 #include "idt.h"
 #include "vm86.h"
 
+extern void user_space_switch(u32 eip, u32 esp, u32 ss, u32 cs);
+
 void
 panic(char* msg)
 {
@@ -43,11 +45,10 @@ parse_boot_info(struct mb_info *mbi)
 void
 user_test()
 {
-    asm("movl $0x6482, %ecx");
+    asm("movl $0x6482, %eax");
+    //asm("hlt");
     while(1);
 }
-
-extern void vm86_set_video_mode();
 
 void
 kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len)
@@ -68,12 +69,19 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len)
 
     kprintf("Available memory : %d MB\n", kinfo.memlen / (1024 * 1024));
     kprintf("kernel_end : 0x%x\n", kinfo.len);
+
     init_paging();
 
-    //init_kheap();
+    tasking_init();
+    struct table *dir = create_user_pagedir();
+    user_id_map(dir);
+    user_pd_map(dir, _get_page(), 0x100000);
+    user_pd_map(dir, _get_page(), kinfo.vbase - PAGE_SIZE);
 
-    init_vm86();
-    vm86exec(&vm86_set_video_mode, 500);
+    switch_page_dir(dir);
+    memcpy(0x100000, &user_test, 100);
+
+    user_space_switch(0x100000, kinfo.vbase, 0x23, 0x1B);
 
     kputs("Boot !");
 }
