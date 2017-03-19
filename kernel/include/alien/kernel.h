@@ -4,13 +4,14 @@
 #include <types.h>
 #include <alien/io.h>
 
-struct kernel_info
+typedef struct kernel_info
 {
     char* cmdline;      /* Command line passed to the kernel at boot */
     u32 memlen;         /* Total length of the available memory */
     u32 len;            /* End of kernel.elf file */
     u32 vbase;          /* Virtual base of the higher half kernel */
-};
+    u32 start;
+} kernel_info_t;
 
 struct regs {
     u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
@@ -19,6 +20,7 @@ struct regs {
 struct kernel_info kinfo;
 
 void panic(char* msg);
+void dump_regs(struct regs r);
 
 static inline void
 outb(u16 port, u8 data)

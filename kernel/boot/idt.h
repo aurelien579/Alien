@@ -9,6 +9,7 @@
 #define IDT_EF_INT  0x0E
 #define IDT_EF_TRAP 0x0F
 #define IDT_EF_P    0x80
+#define IDT_EF_U    0x60
 
 typedef void (*irq_handler_t) (void);
 

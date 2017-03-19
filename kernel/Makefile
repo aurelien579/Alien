@@ -1,14 +1,13 @@
+export INCLUDE_DIR=$(shell pwd)/include
+
 include ../make.conf
+include make.conf
 
-CC = gcc
-CFLAGS = -m32 -ffreestanding -nostdlib -fno-stack-protector \
-		 -nostartfiles -nodefaultlibs -Wall -Wextra -Iinclude
-
-AS = nasm
-AFLAGS = -f elf32
-
-LD = ld
-LFLAGS = -melf_i386
+MODULES 	= memory
+LIBS		= $(foreach m, $(MODULES), -l$(m))
+SEARCH_DIR 	= $(foreach m, $(MODULES), -L$(m)/)
+LD 			= ld
+LFLAGS 		= -melf_i386 $(SEARCH_DIR) $(LIBS)
 
 OBJECTS = \
 	boot/loader.o \
@@ -17,9 +16,6 @@ OBJECTS = \
 	boot/gdt_asm.o \
 	boot/idt.o \
 	boot/idt_asm.o \
-	boot/console.o \
-	boot/paging.o \
-	boot/paging_asm.o \
 	boot/task_asm.o \
 	boot/vm86.o \
 	boot/task.o \
@@ -27,19 +23,23 @@ OBJECTS = \
 	lib/printf.o \
 	lib/string.o \
 	core/vga.o \
-	core/mm.o
+	devices/console.o
 
-$(KERNEL_OUT): $(OBJECTS) linker.ld
-	$(LD) -T linker.ld -o $@ $(LFLAGS) $(OBJECTS)
+$(KERNEL_OUT): $(OBJECTS) linker.ld modules
+	$(LD) -T linker.ld -o $@  $(OBJECTS) $(LFLAGS)
 
-%.o: %.c
+modules:
+	$(foreach m, $(MODULES), cd $(m) && make)
+
+%.o: %.c modules
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-%.o: %.asm
+%.o: %.asm modules
 	$(AS) $(AFLAGS) -o $@ $<
 
 clean:
 	rm -f $(OBJECTS)
 	rm -f $(KERNEL_OUT)
+	cd memory && make clean
 
-.PHONY: clean
+.PHONY: clean modules

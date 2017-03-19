@@ -1,7 +1,9 @@
 #include <alien/io.h>
+#include <alien/string.h>
 #include <alien/kernel.h>
+#include <alien/task.h>
 
-#include <alien/boot/paging.h>
+#include <alien/memory/paging.h>
 #include <alien/boot/multiboot.h>
 #include <alien/mm.h>
 
@@ -43,19 +45,28 @@ parse_boot_info(struct mb_info *mbi)
 }
 
 void
+dump_regs(struct regs r)
+{
+    kprintf("=== DUMP REGISTERS ===\n");
+    kprintf("eax: 0x%x, ebx: 0x%x, ecx: 0x%x, edx: 0x%x\n", r.eax, r.ebx, r.ecx, r.edx);
+    kprintf("esi: 0x%x, edi: 0x%x, esp: 0x%x, ebp: 0x%x\n", r.esi, r.edi, r.esp, r.ebp);
+}
+
+void
 user_test()
 {
-    asm("movl $0x6482, %eax");
-    //asm("hlt");
+    asm("mov $44, %eax");
+    asm("int $0x64");
     while(1);
 }
 
 void
-kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len)
+kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_start)
 {
     kinfo.vbase = vbase;
     kinfo.len = len;
-
+    kinfo.start = kernel_start;
+    
     kcls();
 
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
@@ -73,13 +84,11 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len)
     init_paging();
 
     tasking_init();
+    
     struct table *dir = create_user_pagedir();
-    user_id_map(dir);
-    user_pd_map(dir, _get_page(), 0x100000);
-    user_pd_map(dir, _get_page(), kinfo.vbase - PAGE_SIZE);
 
     switch_page_dir(dir);
-    memcpy(0x100000, &user_test, 100);
+    memcpy((void*) 0x100000, &user_test, 100);
 
     user_space_switch(0x100000, kinfo.vbase, 0x23, 0x1B);
 

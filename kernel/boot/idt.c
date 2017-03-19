@@ -62,21 +62,7 @@ extern void irq13();
 extern void irq14();
 extern void irq15();
 
-struct isr_stack
-{
-    u32 ds;
-    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
-    u32 int_no, err_code;
-    u32 eip, cs, eflags, useresp, ss;
-} __attribute__((packed));
-
-struct irq_stack
-{
-    u32 ds;
-    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
-    u32 irq;
-    u32 eip, cs, eflags, useresp, ss;
-} __attribute__((packed));
+extern void _syscall_handler();
 
 struct idt_entry
 {
@@ -185,51 +171,46 @@ void idt_install()
     idt_set_gate(45, (u32) irq13, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     idt_set_gate(46, (u32) irq14, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     idt_set_gate(47, (u32) irq15, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    
+    idt_set_gate(100, (u32) _syscall_handler, K_CODE_SEL, IDT_EF_P | IDT_EF_INT | IDT_EF_U);
 
     ip.base = (u32) idt;
     ip.limit = sizeof (struct idt_entry) * IDT_SIZE - 1;
     idt_flush((u32) &ip);
-    //enable_irq(1);
 
     asm("sti");
 }
 
-void dump_regs(struct isr_stack stack)
+void
+isr_handler(u32 ds, struct regs r, u32 n, u32 errcode, u32 eip)
 {
-    kprintf("=== DUMP REGISTERS ===\n");
-    kprintf("eax: 0x%x, ebx: 0x%x, ecx: 0x%x, edx: 0x%x\n", stack.eax, stack.ebx, stack.ecx, stack.edx);
-    kprintf("esi: 0x%x, edi: 0x%x, esp: 0x%x, ebp: 0x%x\n", stack.esi, stack.edi, stack.esp, stack.ebp);
-    kprintf("eip: 0x%x, cs: 0x%x, eflags: 0x%x, useresp: 0x%x, ss: 0x%x\n", stack.eip, stack.cs, stack.eflags, stack.useresp, stack.ss);
-}
-
-void isr_handler(struct isr_stack stack)
-{
-    kprintf("int_no: %d\n", stack.int_no);
-    kprintf("    errcode: 0x%x\n", stack.err_code);
-    dump_regs(stack);
+    kprintf("int_no: %d\n", n);
+    kprintf("    errcode: 0x%x\n", errcode);
+    dump_regs(r);
     while(1);
 }
 
-void irq_handler(struct irq_stack stack)
+void
+irq_handler(u32 ds, struct regs r, u32 n)
 {
     /* Acknowledge the pics */
-    if (stack.irq >= 8)
-        outb(0xA0, 0x20);
-    outb(0x20, 0x20);
+    if (n >= 8)
+        outb(SLAVE_IRQ_COMMAND, 0x20);
+    outb(MASTER_IRQ_COMMAND, 0x20);
 
-    if (stack.irq == 0) {
-        //kprintf("tick\n");
+    if (n == 0) {
+        kprintf("tick\n");
     }
 
-    struct irq_desc* desc = &irq_descriptors[stack.irq];
-    while (desc->next != 0)
-    {
+    struct irq_desc* desc = &irq_descriptors[n];
+    while (desc->next != 0) {
         desc->handler();
         desc = desc->next;
     }
 }
 
-void enable_irq(u32 irq)
+void
+enable_irq(u32 irq)
 {
     if (irq < 8)
     {
@@ -241,4 +222,10 @@ void enable_irq(u32 irq)
         u8 mask = inb (SLAVE_IRQ_DATA);
         outb (SLAVE_IRQ_DATA, mask - (1 << irq));
     }
+}
+
+void
+syscall_handler(u32 ds, struct regs regs)
+{
+    kprintf("syscall : eax=0x%x\n", regs.eax);
 }

@@ -70,6 +70,9 @@ loader:
 
 extern _kernel_end
 kernel_end equ (_kernel_end - KERNEL_VIRTUAL_BASE)
+
+extern _kernel_start
+kernel_start equ (_kernel_start - KERNEL_VIRTUAL_BASE)
 higher_half_loader:
     ; Unmap the identity-mapped first 4MB of physical address space.
     ; It should not be needed anymore.
@@ -82,7 +85,8 @@ higher_half_loader:
     ; business with virtual-to-physical address translation should be necessary.
     ; We now have a higher-half kernel.
     mov esp, kernel_stack                       ; Set up the stack
-
+    
+    push kernel_start
     push kernel_end
     push KERNEL_VIRTUAL_BASE
     push eax                                    ; Pass Multiboot magic number

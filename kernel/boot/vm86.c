@@ -1,7 +1,8 @@
 #include "gdt.h"
 #include "idt.h"
 #include "vm86.h"
-#include <alien/boot/paging.h>
+#include <alien/memory/paging.h>
+#include <alien/string.h>
 
 #define VM86_BASE_VADDR 0x10000
 extern void isr13();
@@ -19,10 +20,10 @@ init_vm86()
     memset(&_vm86tss, 0, sizeof(struct tss_entry));
 
     _vm86tss.ss0  = 0x10;
-    _vm86tss.esp0 = &kernel_stack;
+    _vm86tss.esp0 = (u32) &kernel_stack;
     _vm86tss.iomap_base = sizeof(struct tss_entry) - (32);
     kprintf("sizeof(tss) : 0x%x\n", sizeof(struct tss_entry));
-    gdt_set_gate(5, &_vm86tss, sizeof(struct tss_entry), 0xE9, 0xCF);
+    gdt_set_gate(5, (u32) &_vm86tss, sizeof(struct tss_entry), 0xE9, 0xCF);
     tss_flush(5 * 8 | 3);
 }
 
@@ -51,15 +52,12 @@ extern void __out_of_vm86(void);
 void vm86exec(u32 vaddr, u32 size, struct regs r)
 {
     struct table* dir = create_user_pagedir();
-    page_t page = _get_page();
+    paging_user_alloc_page(dir, VM86_BASE_VADDR);
+    switch_page_dir(dir);
+    
     u32 cs = VM86_BASE_VADDR >> 4;
 
-    user_id_map(dir);
-    user_pd_map(dir, page, VM86_BASE_VADDR);
-
-    switch_page_dir(dir);
-
-    memcpy(VM86_BASE_VADDR, vaddr, size);
+    memcpy((void*) VM86_BASE_VADDR, (void*) vaddr, size);
 
     idt_set_gate(13, (u32) __out_of_vm86, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     u32 ip = VM86_BASE_VADDR - (cs << 4);

@@ -1,4 +1,5 @@
 #include <alien/task.h>
+#include <alien/string.h>
 #include "gdt.h"
 
 extern void __sched(struct regs regs, u32 eip, u32 cs, u32 eflags, u32 esp, u32 ss);
@@ -21,8 +22,8 @@ tasking_init()
     kernel_tss.fs = 0x10;
     kernel_tss.gs = 0x10;
 
-    kernel_tss.esp0 = &kernel_stack;
-    gdt_set_gate(5, &kernel_tss, sizeof(struct tss_entry) - 1, 0xE9, 0xCF);
+    kernel_tss.esp0 = (u32) &kernel_stack;
+    gdt_set_gate(5, (u32) &kernel_tss, sizeof(struct tss_entry) - 1, 0xE9, 0xCF);
     tss_flush(5 * 8 | 3);
 
     current_task = &task_list;

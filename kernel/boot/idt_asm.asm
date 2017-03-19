@@ -90,7 +90,7 @@ isr_common:
     mov es, ax
     mov fs, ax
     mov gs, ax
-
+    
     call isr_handler
 
     pop ebx         ; restore ds
@@ -117,9 +117,9 @@ irq_common:
     mov es, ax
     mov fs, ax
     mov gs, ax
-
+    
     call irq_handler
-
+    
     pop ebx
     mov ds, bx
     mov es, bx
@@ -145,3 +145,30 @@ irq0:
     mov fs, eax
 
     call sched
+
+extern syscall_handler
+global _syscall_handler
+_syscall_handler:
+    pusha
+	
+    mov ax, ds
+    push eax
+
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    
+    call syscall_handler
+    
+    pop eax
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    popa
+
+    sti
+    iret

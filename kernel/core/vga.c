@@ -20,7 +20,7 @@ void vga_activate()
 
     r.eax = 0x4F00;
 
-    vm86exec(&vm86_bios, 500, r);
+    vm86exec((u32) &vm86_bios, 500, r);
 
     kprintf("after vm86 !\n");
 

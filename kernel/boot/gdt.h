@@ -51,10 +51,12 @@ struct tss_entry
 void gdt_set_gate(u32 num, u32 base, u32 limit, u8 access, u8 gran);
 
 /**
- * Install the gdt with 3 segment descriptors :
+ * Install the gdt with 5 segment descriptors :
  *      0 : 0x00 - null descriptor
- *      1 : 0x08 - kernel code descriptor
- *      2 : 0x10 - kernel data descriptor
+ *      1 : 0x08 - kernel code segment descriptor
+ *      2 : 0x10 - kernel data segment descriptor
+ *      3 : 0x18 - user code segment descriptor
+ *      4 : 0x20 - user data segment descriptor
  */
 void gdt_install();
 
