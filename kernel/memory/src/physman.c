@@ -94,4 +94,5 @@ physman_allocate_page(physman_t* m)
 void
 physman_deallocate_page(physman_t* m, ppage_t page)
 {
-}
+	
+}

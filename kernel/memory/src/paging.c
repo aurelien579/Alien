@@ -11,7 +11,7 @@
 #define PT_NOTPRESENT -154
 
 struct _memman {
-    page_table_t   *pagedir;
+    struct table   *pagedir;
     physman_t      *physman;
 };
 

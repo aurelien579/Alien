@@ -55,7 +55,7 @@ dump_regs(struct regs r)
 void
 user_test()
 {
-    asm("mov $44, %eax");
+    asm("mov $0x44, %eax");
     asm("int $0x64");
     while(1);
 }
