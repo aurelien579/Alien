@@ -18,6 +18,7 @@ struct task_header {
     struct task_header *next;
 };
 
-void tasking_init();
+void tasking_init(u32 cr3, u32 eip, u32 esp, u32 ss, u32 cs);
+void usermode();
 
 #endif

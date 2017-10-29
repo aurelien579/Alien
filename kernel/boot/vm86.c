@@ -36,7 +36,7 @@ vm86tss_set_esp(u32 esp)
 
 void out_of_vm86(struct regs r)
 {
-    switch_page_dir(&kpd);
+    //switch_page_dir(&kpd);
     idt_set_gate(13, (u32) isr13, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
 
     retregs = r;
@@ -51,7 +51,7 @@ vm86_get_retregs()
 extern void __out_of_vm86(void);
 void vm86exec(u32 vaddr, u32 size, struct regs r)
 {
-    struct table* dir = create_user_pagedir();
+    /*u32* dir = create_user_pagedir();
     paging_user_alloc_page(dir, VM86_BASE_VADDR);
     switch_page_dir(dir);
     
@@ -62,6 +62,6 @@ void vm86exec(u32 vaddr, u32 size, struct regs r)
     idt_set_gate(13, (u32) __out_of_vm86, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     u32 ip = VM86_BASE_VADDR - (cs << 4);
 
-    vm86_jump(r, ip, cs, ip + 0xfff);
+    vm86_jump(r, ip, cs, ip + 0xfff);*/
 }
 

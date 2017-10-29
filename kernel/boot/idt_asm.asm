@@ -136,7 +136,7 @@ global irq0
 extern sched
 irq0:
     cli
-
+    
     pusha
     mov eax, 0x10
     mov ds, eax

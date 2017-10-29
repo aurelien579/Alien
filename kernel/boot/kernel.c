@@ -6,12 +6,13 @@
 #include <alien/memory/paging.h>
 #include <alien/boot/multiboot.h>
 #include <alien/mm.h>
+#include <alien/vfs.h>
+#include <alien/initrd.h>
 
 #include "gdt.h"
 #include "idt.h"
 #include "vm86.h"
 
-extern void user_space_switch(u32 eip, u32 esp, u32 ss, u32 cs);
 
 void
 panic(char* msg)
@@ -57,6 +58,8 @@ user_test()
 {
     asm("mov $0x44, %eax");
     asm("int $0x64");
+    asm("int $0x64");
+    asm("int $0x64");
     while(1);
 }
 
@@ -80,17 +83,46 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_s
 
     kprintf("Available memory : %d MB\n", kinfo.memlen / (1024 * 1024));
     kprintf("kernel_end : 0x%x\n", kinfo.len);
-
-    init_paging();
-
-    tasking_init();
     
-    struct table *dir = create_user_pagedir();
+    if (mb_info->mods_count < 1) {
+		panic("No module loaded!");
+	}
+	
+	struct mb_mod_list *mod_list = (struct mb_mod_list *)
+									(mb_info->mods_addr + kinfo.vbase);
+	
+	kprintf("modaddr : 0x%x\n", mod_list->mod_start);
+	
+	if (mod_list->mod_end > kinfo.len) {
+		kinfo.len = mod_list->mod_end;
+	}
+	
+    init_paging();
+	
+	vfs_node_t root;
+	
+	init_initrd(mod_list->mod_start + kinfo.vbase, &root);
+	vfs_init(&root);
+	
+	vfs_find(0, "/test", &root);
+	
+	u8 buffer[64];
+	
+	vfs_read(&root, 0, 64, buffer);
+	
+	kprintf("%s\n", buffer);		
+    
+    u32 cr3 = create_user_pagedir();
+	switch_page_dir(cr3);
+	
+	u32 page = alloc_page(0x400000, 1);
+	
+    memcpy((void*) page, &user_test, 100);
+	
 
-    switch_page_dir(dir);
-    memcpy((void*) 0x100000, &user_test, 100);
+    tasking_init(cr3, page, 0x400FFF, 0x23, 0x1B);
 
-    user_space_switch(0x100000, kinfo.vbase, 0x23, 0x1B);
+    usermode();
 
     kputs("Boot !");
 }

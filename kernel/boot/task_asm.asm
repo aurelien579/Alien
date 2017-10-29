@@ -101,30 +101,34 @@ __out_of_vm86:
 extern enable_irq
 user_space_switch:
     cli
+    add esp, 4					; Skip return eip
     mov ebp, esp
-
-    push esp
-    call tasking_set_esp0
-    add esp, 4
+    
+	;jmp $
+	
+    ;push esp
+    ;call tasking_set_esp0
+    ;add esp, 4
 
     push 0
     call enable_irq
-    add esp, 8                  ; Skip return-EIP and enable_irq argument (0)
+    add esp, 4
 
     xor eax, eax                ; Erase all registers
     mov ebx, eax
     mov ecx, eax
     mov edx, eax
-    mov ebp, eax
     mov esi, eax
     mov edi, eax
-
-    push DWORD [esp + 4*2]      ; SS
-    push DWORD [esp + 4*2]      ; ESP
+    
+    push DWORD [ebp + 4*2]      ; SS
+    push DWORD [ebp + 4]      	; ESP
     pushf                       ; EFLAGS
     or DWORD [esp], EFLAGS_IF   ; Set IF flag
-    push DWORD [esp + 4*6]      ; CS
-    push DWORD [esp + 4*4]      ; EIP
+    push DWORD [ebp + 4*3]     	; CS
+    push DWORD [ebp]      		; EIP
+    
+    xor ebp, ebp
     iret
 
 [bits 16]

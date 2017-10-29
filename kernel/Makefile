@@ -3,7 +3,7 @@ export INCLUDE_DIR=$(shell pwd)/include
 include ../make.conf
 include make.conf
 
-MODULES 	= memory
+MODULES 	= 
 LIBS		= $(foreach m, $(MODULES), -l$(m))
 SEARCH_DIR 	= $(foreach m, $(MODULES), -L$(m)/)
 LD 			= ld
@@ -23,7 +23,11 @@ OBJECTS = \
 	lib/printf.o \
 	lib/string.o \
 	core/vga.o \
-	devices/console.o
+	devices/console.o \
+	memory/paging.o \
+	memory/switch_pagedir.o \
+	fs/vfs.o \
+	fs/initrd.o
 
 $(KERNEL_OUT): $(OBJECTS) linker.ld modules
 	$(LD) -T linker.ld -o $@  $(OBJECTS) $(LFLAGS)
@@ -40,6 +44,5 @@ modules:
 clean:
 	rm -f $(OBJECTS)
 	rm -f $(KERNEL_OUT)
-	cd memory && make clean
 
 .PHONY: clean modules

@@ -4,6 +4,13 @@
 #include <types.h>
 #include <alien/io.h>
 
+#define align(a, b) \
+    if (a % b != 0) \
+        a += b - a % b;
+
+#define updiv(a, b) \
+    (((a) + (b) - 1) / (b))
+
 typedef struct kernel_info
 {
     char* cmdline;      /* Command line passed to the kernel at boot */
