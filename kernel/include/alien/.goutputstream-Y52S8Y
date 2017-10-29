@@ -1,0 +1,50 @@
+#ifndef ALIEN_VFS_H
+#define ALIEN_VFS_H
+
+#include <types.h>
+
+#define PATH_MAX 128
+
+typedef struct fs_node fs_node_t;
+typedef struct dirent dirent_t;
+
+typedef int (*read_t) 	(const fs_node_t *node,
+						 unsigned int offset,
+						 unsigned int len,
+						 char *dest);
+
+typedef int (*write_t) 	(const fs_node_t *node,
+						 unsigned int offset,
+						 unsigned int len,
+						 const char *src);
+
+typedef void (*readdir_t) 	(const fs_node_t *node,
+							 dirent_t *dir);
+
+struct fs_node {
+	char path[PATH_MAX];
+	read_t read;
+	write_t write;
+	readdir_t readdir;
+	unsigned int size;
+};
+
+struct dirent {
+	char path[PATH_MAX];
+};
+
+int read_fs		(const fs_node_t *node,
+				 unsigned int offset,
+				 unsigned int len,
+				 char *dest);
+
+int write_fs	(const fs_node_t *node,
+				 unsigned int offset,
+				 unsigned int len,
+				 const char *src);
+				
+void readdir_fs	(const fs_node_t *node, dirent_t *dir);
+
+
+
+#endif
