@@ -24,7 +24,18 @@ struct regs {
     u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
 } __attribute__((packed));
 
-struct kernel_info kinfo;
+typedef struct regs regs_t;
+
+typedef struct {
+	regs_t regs;	
+	u32 eip;
+	u32 cs;
+	u32 eflags;
+	u32 esp;
+	u32 ss;
+} __attribute__((packed)) interrupt_frame_t;
+
+kernel_info_t kinfo;
 
 void panic(char* msg);
 void dump_regs(struct regs r);

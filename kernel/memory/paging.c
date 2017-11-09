@@ -13,7 +13,7 @@
 static u8  bitmap_size = 0;
 static u8 *bitmap;
 static u32 kernel_pagedir[1024] __attribute__ ((aligned (PAGE_SIZE)));
-static u32 *current_pagedir = (u32 *) 0xFFC00000;
+static u32 *current_pagedir = (u32 *) 0xFFFFF000;
 
 static inline void
 invlpg(u32 page)
@@ -24,7 +24,7 @@ invlpg(u32 page)
 static void
 write_page_entry(u32 *structure, u32 i, u32 frame, u8 user)
 {
-	structure[i] |= (frame & 0xFFFFF000);
+	structure[i] = (frame & 0xFFFFF000);
 	structure[i] |= 1;
 	structure[i] |= 2; /* R/W */
 	structure[i] |= ((user & 0x1) << 2);
@@ -64,7 +64,7 @@ first_page_free(u32 *structure, u32 base)
 				}
 			}
 		} else {
-			return (i << 22);
+			return (i << 22) + (j << 12);
 		}
 	}
 	
@@ -121,12 +121,13 @@ pagetable_is_empty(u32 *table)
 u32
 phys_addr(u32 *dir, u32 page)
 {
-	u32 page_frame = PAGE_ENTRY_BASE(dir[PAGEDIR_INDEX(page)]);
-	u32 *table = (u32 *) map(page_frame, kinfo.vbase, 0);
+	if (!page_entry_is_present(dir, PAGEDIR_INDEX(page))) {
+		return 0;
+	}
+	
+	u32 *table = (u32 *) PAGETABLE_VADDR(PAGEDIR_INDEX(page));
 	
 	u32 frame = PAGE_ENTRY_BASE(table[PAGETABLE_INDEX(page)]);
-	
-	unmap((u32) table);
 	
 	return frame;
 }
@@ -227,10 +228,7 @@ init_paging()
 		u32 pt_idx = PAGETABLE_INDEX(page);
 		write_page_entry((u32 *) pagetable_addr, pt_idx, frame, 0);			
 	}
-	
-	write_page_entry(kernel_pagedir, 0,
-					 (u32)kernel_pagedir - kinfo.vbase, 0);
-	
+		
 	write_page_entry(kernel_pagedir, 1023,
 					 (u32)kernel_pagedir - kinfo.vbase, 0);
 	
@@ -248,13 +246,52 @@ u32
 create_user_pagedir()
 {
 	u32 pagedir_frame = alloc_frame();	
-	u32 *pagedir = (u32 *) map(pagedir_frame, kinfo.vbase, 1);
+	u32 *pagedir = (u32 *) map(pagedir_frame, kinfo.vbase, 0);
 	
-	memcpy(pagedir, current_pagedir, 4096);
+	memset(pagedir, 0, 4096);
+	memcpy(&pagedir[PAGEDIR_INDEX(kinfo.vbase)],
+			&current_pagedir[PAGEDIR_INDEX(kinfo.vbase)],
+			(1024 - PAGEDIR_INDEX(kinfo.vbase)) * 4);
 	
-	write_page_entry(pagedir, 0, pagedir_frame, 0);
 	write_page_entry(pagedir, 1023, pagedir_frame, 0);
+	
 	unmap((u32) pagedir);
 		
 	return pagedir_frame;
+}
+
+u32
+copy_current_pagedir()
+{
+	u32 new_pagedir_phys = create_user_pagedir();
+	u32 old_pagedir_phys = phys_addr(current_pagedir, (u32) current_pagedir);
+
+	switch_page_dir(new_pagedir_phys);
+	u32 *old_pagedir = (u32 *) map(old_pagedir_phys, PAGE_SIZE, 0);
+	
+	for (u32 i = 0; i < PAGEDIR_INDEX(kinfo.vbase); i++) {
+		if (page_entry_is_present(old_pagedir, i)) {
+			u32 *pagetable = (u32 *) map(PAGE_ENTRY_BASE(old_pagedir[i]), PAGE_SIZE, 0);
+			
+			for (u32 j = 0; j < 1024; j++) {
+				if (page_entry_is_present(pagetable, j)) {
+					u32 base = PAGE_ENTRY_BASE(pagetable[j]);
+					
+					if (base != (u32)old_pagedir && base != (u32)pagetable) {						
+						u32 new_page = alloc_page((i << 22) + (j << 12), 1);
+						u32 old_page = map(base, PAGE_SIZE, 0);
+						
+						memcpy((u32 *) new_page, (u32 *) old_page, PAGE_SIZE);
+						
+						unmap(old_page);
+					}
+				}
+			}
+			unmap((u32) pagetable);
+		}
+	}
+	
+	unmap((u32) old_pagedir);
+	
+	return new_pagedir_phys;
 }

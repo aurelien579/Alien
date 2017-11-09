@@ -1,6 +1,8 @@
 #include <alien/task.h>
+#include <assert.h>
 #include <alien/string.h>
 #include <alien/memory/paging.h>
+#include <alien/memory/kmalloc.h>
 #include "gdt.h"
 
 extern void user_space_switch(u32 eip, u32 esp, u32 ss, u32 cs);
@@ -10,8 +12,8 @@ extern u32 kernel_stack;
 extern void tss_flush(u32 index);
 
 struct tss_entry kernel_tss;
-struct task_header task_list;
-struct task_header *current_task;
+task_header_t task_list;
+task_header_t *current_task;
 
 void
 tasking_init(u32 cr3, u32 eip, u32 esp, u32 ss, u32 cs)
@@ -33,6 +35,7 @@ tasking_init(u32 cr3, u32 eip, u32 esp, u32 ss, u32 cs)
     current_task->info.cs = cs;
     current_task->info.eip = eip;
     current_task->info.cr3 = cr3;
+    current_task->info.pid = 0;
 }
 
 void
@@ -51,17 +54,23 @@ tasking_set_esp0(u32 esp0)
     kernel_tss.esp0 = esp0;
 }
 
-void
-sched(struct regs regs, u32 eip, u32 cs, u32 eflags, u32 esp, u32 ss)
+static inline void
+save_current_task(interrupt_frame_t frame)
 {
-    current_task->info.regs = regs;
-    current_task->info.esp = esp;
-    current_task->info.ss = ss;
-    current_task->info.cs = cs;
-    current_task->info.eip = eip,
-    current_task->info.eflags = eflags;
+	current_task->info.regs = frame.regs;
+    current_task->info.esp = frame.esp;
+    current_task->info.ss = frame.ss;
+    current_task->info.cs = frame.cs;
+    current_task->info.eip = frame.eip,
+    current_task->info.eflags = frame.eflags;
+}
 
-    current_task = current_task->next;
+void
+sched(interrupt_frame_t frame)
+{
+    save_current_task(frame);
+	
+	current_task = current_task->next;
 
     __sched(current_task->info.regs,
             current_task->info.eip,
@@ -69,4 +78,25 @@ sched(struct regs regs, u32 eip, u32 cs, u32 eflags, u32 esp, u32 ss)
             current_task->info.eflags,
             current_task->info.esp,
             current_task->info.ss);
+}
+
+u32
+fork(interrupt_frame_t frame)
+{	
+	task_header_t *new_header = (task_header_t *) kmalloc(sizeof(task_header_t));
+	assert(new_header);
+	
+	save_current_task(frame);
+	
+	memcpy(new_header, current_task, sizeof(task_header_t));
+	new_header->info.pid++;
+		
+	new_header->info.cr3 = copy_current_pagedir();
+	
+	current_task->next = new_header;
+	current_task->next->next = current_task;
+	
+	new_header->info.regs.eax = 0;
+	
+	return 1;
 }

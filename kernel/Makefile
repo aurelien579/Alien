@@ -25,6 +25,7 @@ OBJECTS = \
 	core/vga.o \
 	devices/console.o \
 	memory/paging.o \
+	memory/kmalloc.o \
 	memory/switch_pagedir.o \
 	fs/vfs.o \
 	fs/initrd.o

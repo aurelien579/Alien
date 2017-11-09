@@ -3,6 +3,7 @@
 
 #include <alien/kernel.h>
 #include <alien/io.h>
+#include <alien/task.h>
 
 #define MASTER_IRQ_COMMAND  0x20
 #define MASTER_IRQ_DATA     0x21
@@ -224,8 +225,16 @@ enable_irq(u32 irq)
     }
 }
 
-void
-syscall_handler(u32 ds, struct regs regs)
+u32
+syscall_handler(u32 ds, interrupt_frame_t frame)
 {
-    kprintf("syscall : eax=0x%x\n", regs.eax);
+    if (frame.regs.eax == 0x00) {
+		kprintf("%d\n", frame.regs.ebx);
+	} else if (frame.regs.eax == 0x01) {
+		return fork(frame);
+	} else {
+		kprintf("unknown syscall!\n");
+	}
+	
+	return 0;
 }

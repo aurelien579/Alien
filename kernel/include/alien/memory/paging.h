@@ -27,5 +27,6 @@ u32 create_user_pagedir();
 u32 map(u32 frame, u32 offset, u32 user);
 void unmap(u32 page);
 u32 phys_addr(u32 *dir, u32 page);
+u32 copy_current_pagedir();
 
 #endif

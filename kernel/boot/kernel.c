@@ -4,10 +4,13 @@
 #include <alien/task.h>
 
 #include <alien/memory/paging.h>
+#include <alien/memory/kmalloc.h>
 #include <alien/boot/multiboot.h>
 #include <alien/mm.h>
 #include <alien/vfs.h>
 #include <alien/initrd.h>
+
+#include <assert.h>
 
 #include "gdt.h"
 #include "idt.h"
@@ -27,8 +30,7 @@ parse_boot_info(struct mb_info *mbi)
     if (MB_CHECK_FLAG (mbi->flags, 2))
         kinfo.cmdline = (char*) (mbi->cmdline + kinfo.vbase);
 
-    if (MB_CHECK_FLAG (mbi->flags, 6))
-    {
+    if (MB_CHECK_FLAG (mbi->flags, 6)) {
         mbi->mmap_addr = mbi->mmap_addr + kinfo.vbase;
         struct mb_mmap_entry *mmap = (struct mb_mmap_entry *) mbi->mmap_addr;
 
@@ -38,8 +40,7 @@ parse_boot_info(struct mb_info *mbi)
                 kinfo.memlen = (u32) mmap->base_low + mmap->len_low;
             mmap = MB_MMAP_NEXT (mmap);
         }
-    }
-    else
+    } else
         return EMBFLAGS;
 
     return 0;
@@ -56,11 +57,28 @@ dump_regs(struct regs r)
 void
 user_test()
 {
-    asm("mov $0x44, %eax");
-    asm("int $0x64");
-    asm("int $0x64");
-    asm("int $0x64");
-    while(1);
+	u32 ret;
+	
+    asm("mov $0x01, %%eax\n"
+		"int $0x64\n"
+		"mov %0, %%eax"
+		: "=a"(ret) :);
+	
+	if (ret) {
+		while(1) {
+			asm("mov $0x0, %eax\n"
+				"mov $0x44, %ebx\n"
+				"int $0x64");
+		}
+	} else {
+		while(1) {
+			asm("mov $0x0, %eax\n"
+				"mov $0x22, %ebx\n"
+				"int $0x64");	
+		}
+	}
+	
+	while(1);
 }
 
 void
@@ -72,22 +90,24 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_s
     
     kcls();
 
-    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         panic("Invalid multiboot flag !");
-
-    if (parse_boot_info(mb_info) < 0)
+	}
+	
+    if (parse_boot_info(mb_info) < 0) {
         panic("Can't get boot informations from multiboot informations");
-
+	}
+	
+	if (mb_info->mods_count < 1) {
+		panic("No module loaded!");
+	}
+	
     gdt_install();
     idt_install();
 
     kprintf("Available memory : %d MB\n", kinfo.memlen / (1024 * 1024));
     kprintf("kernel_end : 0x%x\n", kinfo.len);
-    
-    if (mb_info->mods_count < 1) {
-		panic("No module loaded!");
-	}
-	
+    	
 	struct mb_mod_list *mod_list = (struct mb_mod_list *)
 									(mb_info->mods_addr + kinfo.vbase);
 	
@@ -98,10 +118,13 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_s
 	}
 	
     init_paging();
+	kmalloc_init();
 	
-	vfs_node_t root;
+
 	
-	init_initrd(mod_list->mod_start + kinfo.vbase, &root);
+	//vfs_node_t root;
+	
+	/*init_initrd(mod_list->mod_start + kinfo.vbase, &root);
 	vfs_init(&root);
 	
 	vfs_find(0, "/test", &root);
@@ -110,17 +133,19 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_s
 	
 	vfs_read(&root, 0, 64, buffer);
 	
-	kprintf("%s\n", buffer);		
-    
+	kprintf("%s\n", buffer);
+	*/
+	
     u32 cr3 = create_user_pagedir();
 	switch_page_dir(cr3);
 	
 	u32 page = alloc_page(0x400000, 1);
+	u32 stack = alloc_page(0x800000, 1);
+	stack += 0xFFF;
 	
     memcpy((void*) page, &user_test, 100);
 	
-
-    tasking_init(cr3, page, 0x400FFF, 0x23, 0x1B);
+    tasking_init(cr3, page, stack, 0x23, 0x1B);
 
     usermode();
 

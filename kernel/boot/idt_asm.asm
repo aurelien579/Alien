@@ -159,16 +159,16 @@ _syscall_handler:
     mov es, ax
     mov fs, ax
     mov gs, ax
-    
+        
     call syscall_handler
+    	
+    pop ebx
+    mov ds, bx
+    mov es, bx
+    mov fs, bx
+    mov gs, bx
     
-    pop eax
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-
-    popa
-
+    add esp, 4*8
+	   
     sti
     iret
