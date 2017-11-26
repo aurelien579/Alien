@@ -28,7 +28,9 @@ OBJECTS = \
 	memory/kmalloc.o \
 	memory/switch_pagedir.o \
 	fs/vfs.o \
-	fs/initrd.o
+	fs/initrd.o \
+	drivers/ata/ata.o \
+	drivers/ata/ata_asm.o
 
 $(KERNEL_OUT): $(OBJECTS) linker.ld modules
 	$(LD) -T linker.ld -o $@  $(OBJECTS) $(LFLAGS)

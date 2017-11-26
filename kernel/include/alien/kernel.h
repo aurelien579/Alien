@@ -11,6 +11,16 @@
 #define updiv(a, b) \
     (((a) + (b) - 1) / (b))
 
+extern u32 __KERNEL_START__;
+extern u32 __KERNEL_END__;
+extern u32 __KERNEL_SIZE__;
+extern u32 __KERNEL_VBASE__;
+
+#define KERNEL_START    ((u32) &__KERNEL_START__)
+#define KERNEL_END      ((u32) &__KERNEL_END__)
+#define KERNEL_SIZE     ((u32) &__KERNEL_SIZE__)
+#define KERNEL_VBASE    ((u32) &__KERNEL_VBASE__)
+
 typedef struct kernel_info
 {
     char* cmdline;      /* Command line passed to the kernel at boot */
@@ -27,7 +37,9 @@ struct regs {
 typedef struct regs regs_t;
 
 typedef struct {
-	regs_t regs;	
+	regs_t regs;
+	u32 int_no;
+	u32 errorcode;
 	u32 eip;
 	u32 cs;
 	u32 eflags;
@@ -37,7 +49,7 @@ typedef struct {
 
 kernel_info_t kinfo;
 
-void panic(char* msg);
+void panic(const char* msg);
 void dump_regs(struct regs r);
 
 static inline void
@@ -52,6 +64,36 @@ inb(u16 port)
     u8 ret;
     asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
+}
+
+static inline u16
+inw(u16 port)
+{
+    u16 ret;
+    asm volatile ("inw %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+static inline void
+outsw(u16 port, u16 *data, u32 count)
+{
+    asm volatile ("mov %2, %%ecx \n"
+                  "mov %0, %%esi \n"
+                  "mov %1, %%dx \n"
+                  "rep outsw"
+                  :: "m"(data), "Nd"(port), "m"(count) : "ecx", "esi"
+    );
+}
+
+static inline void
+insw(u16 port, u16 *data, u32 count)
+{
+    asm volatile ("mov %2, %%ecx \n"
+                  "mov %0, %%edi \n"
+                  "mov %1, %%dx \n"
+                  "rep insw"
+                  :: "m"(data), "Nd"(port), "m"(count) : "ecx", "edi"
+    );
 }
 
 #endif

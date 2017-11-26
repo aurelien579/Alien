@@ -1,46 +1,53 @@
-global user_space_switch
-global tss_flush
-global vm86_jump
-global vm86_bios
-global __sched
+;-------------------------------------------------------------------------------
+; Source name   : idt_asm.asm
+; Version       : 0.1
+; Created data  : 22/10/2017
+; Last update   : 24/10/2017
+; Author        : Aurélien Martin
+; Description   : This library provides routines for scheduling tasks
+;-------------------------------------------------------------------------------
 
 EFLAGS_IF       equ (1 << 9)
 EFLAGS_VM       equ (1 << 17)
 EFLAGS_IOPL3    equ (0x3000)
+
+SECTION .text
+
+GLOBAL user_space_switch, tss_flush, vm86_jump, vm86_bios, execute_task
+GLOBAL __out_of_vm86
+EXTERN kprintf, tasking_set_esp0, vm86tss_set_esp, out_of_vm86
+EXTERN enable_irq
 
 tss_flush:
     mov ax, 0x2B
     ltr ax
     ret
 
-extern kprintf
-; void __sched(struct regs regs, u32 eip, u32 cs, u32 eflags, u32 esp, u32 ss);
-__sched:
-    add esp, 4                  ; Skip return-EIP
-
+; void __sched(task_info_t info);
+execute_task:
+    add esp, 12                 ; Skip return-EIP, PID and CR3
+	mov ebp, esp
+	
     mov al, 0x20
     out 0x20, al
-
-    mov eax, [esp + 12*4]       ; Use ss as the others segment registers.
-                                ; (8 for regs structures, and 4 for eip, cs
-                                ;  eflags and esp)
+    mov eax, [ebp + 11*4]       ; Use SS as the others segment registers.
+                                ; (8 for regs structures, and 3 for EIP, CS
+                                ;  EFLAGS)
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
 
     popa
-    push DWORD [esp + 4*4]      ; SS
-    push DWORD [esp + 4*4]      ; ESP
+    push DWORD [esp + 3*4]      ; SS
+    push DWORD [esp + 5*4]      ; ESP
     pushf                       ; EFLAGS
     or DWORD [esp], EFLAGS_IF   ; Set IF flag
-    push DWORD [esp + 4*4]      ; CS
-    push DWORD [esp + 4*4]      ; EIP
+    push DWORD [esp + 5*4]      ; CS
+    push DWORD [esp + 5*4]      ; EIP
     iret
 
 ; void vm86_jump(struct regs r, u32 ip, u32 cs, u32 sp);
-extern tasking_set_esp0
-extern vm86tss_set_esp
 vm86_jump:
     push ebp
 
@@ -68,8 +75,6 @@ vm86_jump:
     push DWORD [ebp]             ; IP
     iret
 
-extern out_of_vm86
-global __out_of_vm86
 ; Before entering exception handler in virtual 8086 mode, the CPU push old GS,
 ; FS, DS, ES, SS, ESP, EFLAGS, CS, EIP. These are the old values, before the
 ; exception has been catched. So in order to get return EIP from the function
@@ -98,22 +103,15 @@ __out_of_vm86:
     jmp [esp]
 
 ; void user_space_switch(u32 eip, u32 esp, u32 ss, u32 cs);
-extern enable_irq
 user_space_switch:
     cli
     add esp, 4					; Skip return eip
     mov ebp, esp
     
-	;jmp $
-	
-    ;push esp
-    ;call tasking_set_esp0
-    ;add esp, 4
-
-    push 0
+    push 0						; IRQ number to enable
     call enable_irq
-    add esp, 4
-
+    add esp, 4					; Erase enable_irq argument
+	
     xor eax, eax                ; Erase all registers
     mov ebx, eax
     mov ecx, eax

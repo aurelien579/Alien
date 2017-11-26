@@ -20,6 +20,7 @@ typedef struct task_header {
 
 void tasking_init(u32 cr3, u32 eip, u32 esp, u32 ss, u32 cs);
 void usermode();
-u32 fork();
+void fork();
+void sched(interrupt_frame_t frame);
 
 #endif

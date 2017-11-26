@@ -46,24 +46,24 @@ extern void isr29();
 extern void isr30();
 extern void isr31();
 
-extern void irq0();
-extern void irq1();
-extern void irq2();
-extern void irq3();
-extern void irq4();
-extern void irq5();
-extern void irq6();
-extern void irq7();
-extern void irq8();
-extern void irq9();
-extern void irq10();
-extern void irq11();
-extern void irq12();
-extern void irq13();
-extern void irq14();
-extern void irq15();
+extern void isr32();
+extern void isr33();
+extern void isr34();
+extern void isr35();
+extern void isr36();
+extern void isr37();
+extern void isr38();
+extern void isr39();
+extern void isr40();
+extern void isr41();
+extern void isr42();
+extern void isr43();
+extern void isr44();
+extern void isr45();
+extern void isr46();
+extern void isr47();
 
-extern void _syscall_handler();
+extern void isr100();
 
 struct idt_entry
 {
@@ -91,7 +91,8 @@ struct irq_desc
 
 static struct irq_desc irq_descriptors[16];
 
-void idt_set_gate(u32 num, u32 offset, u8 selector, u8 flags)
+void
+idt_set_gate(u32 num, u32 offset, u8 selector, u8 flags)
 {
     if (num >= IDT_SIZE)
     {
@@ -107,10 +108,10 @@ void idt_set_gate(u32 num, u32 offset, u8 selector, u8 flags)
     idt[num].type_attr = flags;
 }
 
-void idt_install()
+void
+idt_install()
 {
     asm("cli");
-
     idt_set_gate(0, (u32) isr0, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     idt_set_gate(1, (u32) isr1, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     idt_set_gate(2, (u32) isr2, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
@@ -142,7 +143,24 @@ void idt_install()
     idt_set_gate(28, (u32) isr28, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     idt_set_gate(29, (u32) isr29, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     idt_set_gate(30, (u32) isr30, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(31, (u32) isr31, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(31, (u32) isr31, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);    
+    
+    idt_set_gate(32, (u32) isr32, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(33, (u32) isr33, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(34, (u32) isr34, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(35, (u32) isr35, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(36, (u32) isr36, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(37, (u32) isr37, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(38, (u32) isr38, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(39, (u32) isr39, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(40, (u32) isr40, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(41, (u32) isr41, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(42, (u32) isr42, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(43, (u32) isr43, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(44, (u32) isr44, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(45, (u32) isr45, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(46, (u32) isr46, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
+    idt_set_gate(47, (u32) isr47, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
 
     outb(MASTER_IRQ_COMMAND, 0x11);     /* initialize master IRQ */
     outb(SLAVE_IRQ_COMMAND, 0x11);      /* initialize slave IRQ */
@@ -155,25 +173,8 @@ void idt_install()
     /* Disable all irqs */
     outb(MASTER_IRQ_DATA, 0xFF);
     outb(SLAVE_IRQ_DATA, 0xFF);
-
-    idt_set_gate(32, (u32) irq0, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(33, (u32) irq1, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(34, (u32) irq2, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(35, (u32) irq3, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(36, (u32) irq4, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(37, (u32) irq5, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(38, (u32) irq6, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(39, (u32) irq7, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(40, (u32) irq8, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(41, (u32) irq9, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(42, (u32) irq10, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(43, (u32) irq11, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(44, (u32) irq12, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(45, (u32) irq13, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(46, (u32) irq14, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
-    idt_set_gate(47, (u32) irq15, K_CODE_SEL, IDT_EF_P | IDT_EF_INT);
     
-    idt_set_gate(100, (u32) _syscall_handler, K_CODE_SEL, IDT_EF_P | IDT_EF_INT | IDT_EF_U);
+    idt_set_gate(100, (u32) isr100, K_CODE_SEL, IDT_EF_P | IDT_EF_INT | IDT_EF_U);
 
     ip.base = (u32) idt;
     ip.limit = sizeof (struct idt_entry) * IDT_SIZE - 1;
@@ -182,59 +183,56 @@ void idt_install()
     asm("sti");
 }
 
-void
-isr_handler(u32 ds, struct regs r, u32 n, u32 errcode, u32 eip)
-{
-    kprintf("int_no: %d\n", n);
-    kprintf("    errcode: 0x%x\n", errcode);
-    dump_regs(r);
-    while(1);
-}
-
-void
-irq_handler(u32 ds, struct regs r, u32 n)
-{
-    /* Acknowledge the pics */
-    if (n >= 8)
-        outb(SLAVE_IRQ_COMMAND, 0x20);
-    outb(MASTER_IRQ_COMMAND, 0x20);
-
-    if (n == 0) {
-        kprintf("tick\n");
-    }
-
-    struct irq_desc* desc = &irq_descriptors[n];
-    while (desc->next != 0) {
-        desc->handler();
-        desc = desc->next;
-    }
-}
-
-void
-enable_irq(u32 irq)
-{
-    if (irq < 8)
-    {
-        u8 mask = inb (MASTER_IRQ_DATA);
-        outb (MASTER_IRQ_DATA, mask - (1 << irq));
-    }
-    else
-    {
-        u8 mask = inb (SLAVE_IRQ_DATA);
-        outb (SLAVE_IRQ_DATA, mask - (1 << irq));
-    }
-}
-
-u32
+static void
 syscall_handler(u32 ds, interrupt_frame_t frame)
 {
     if (frame.regs.eax == 0x00) {
 		kprintf("%d\n", frame.regs.ebx);
 	} else if (frame.regs.eax == 0x01) {
-		return fork(frame);
+		fork(frame);
 	} else {
 		kprintf("unknown syscall!\n");
 	}
-	
-	return 0;
 }
+
+void
+interrupt_handler(u32 ds, interrupt_frame_t frame)
+{
+	if (frame.int_no < 32) {
+		kprintf("int_no: %d\n",frame.int_no);
+		kprintf("    errcode: 0x%x\n", frame.errorcode);
+		dump_regs(frame.regs);
+		while(1);
+	} else if (frame.int_no == 100) {		
+		syscall_handler(ds, frame);
+	} else {
+		frame.int_no -= 32;
+		if (frame.int_no >= 8)
+			outb(SLAVE_IRQ_COMMAND, 0x20);
+		outb(MASTER_IRQ_COMMAND, 0x20);
+
+		if (frame.int_no == 0) {
+			sched(frame);
+		}
+
+		struct irq_desc* desc = &irq_descriptors[frame.int_no];
+		while (desc->next != 0) {
+			desc->handler();
+			desc = desc->next;
+		}
+	}
+}
+
+void
+enable_irq(u32 irq)
+{
+    if (irq < 8) {
+        u8 mask = inb (MASTER_IRQ_DATA);
+        outb (MASTER_IRQ_DATA, mask - (1 << irq));
+    } else {
+        u8 mask = inb (SLAVE_IRQ_DATA);
+        outb (SLAVE_IRQ_DATA, mask - (1 << irq));
+    }
+}
+
+

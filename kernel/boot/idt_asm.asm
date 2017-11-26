@@ -1,11 +1,26 @@
-global idt_flush
+;-------------------------------------------------------------------------------
+; Source name   : idt_asm.asm
+; Version       : 0.1
+; Created data  : 22/10/2017
+; Last update   : 24/10/2017
+; Author        : Aurélien Martin
+; Description   : This library manage interrupts and IRQs handling
+;-------------------------------------------------------------------------------
+
+SECTION .text
+
+GLOBAL idt_flush
+EXTERN interrupt_handler
+
 idt_flush:
-    mov eax, [esp+4]
+	push eax
+    mov eax, [esp+8]
     lidt [eax]
+    pop eax
     ret
 
 %macro ISR_ERRCODE 1
-global isr%1
+GLOBAL isr%1
 isr%1:
     cli
     push byte %1
@@ -13,20 +28,12 @@ isr%1:
 %endmacro
 
 %macro ISR_NOERRCODE 1
-global isr%1
+GLOBAL isr%1
 isr%1:
     cli
     push byte 0
     push byte %1
     jmp isr_common
-%endmacro
-
-%macro IRQ 1
-global irq%1
-irq%1:
-    cli
-    push byte %1
-    jmp irq_common
 %endmacro
 
 ISR_NOERRCODE 0
@@ -62,28 +69,51 @@ ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
 
-IRQ 1
-IRQ 2
-IRQ 3
-IRQ 4
-IRQ 5
-IRQ 6
-IRQ 7
-IRQ 8
-IRQ 9
-IRQ 10
-IRQ 11
-IRQ 12
-IRQ 13
-IRQ 14
-IRQ 15
+ISR_NOERRCODE 32
+ISR_NOERRCODE 33
+ISR_NOERRCODE 34
+ISR_NOERRCODE 35
+ISR_NOERRCODE 36
+ISR_NOERRCODE 37
+ISR_NOERRCODE 38
+ISR_NOERRCODE 39
+ISR_NOERRCODE 40
+ISR_NOERRCODE 41
+ISR_NOERRCODE 42
+ISR_NOERRCODE 43
+ISR_NOERRCODE 44
+ISR_NOERRCODE 45
+ISR_NOERRCODE 46
+ISR_NOERRCODE 47
 
-extern isr_handler
+
+ISR_NOERRCODE 100
+
+;-------------------------------------------------------------------------------
+; isr_common : The common part in all ISRs
+;
+; Updated       : 24/10/2017
+; In            : On the stack there must be :
+;                       --------------
+;                       |     SS     | (If stack change occured)
+;                       |     ESP    | (If stack change occured)
+;                       |   EFLAGS   |
+;                       |     CS     |
+;                       |     EIP    | <-- ESP must be there before IRET
+;                       | Error Code |
+;                       | ISR number |
+;                       
+; Returns       : Nothing
+; Modifies      : Nothing
+; Description   : After specifics macros, all default ISRs JMP to this routine.
+;                 After the IRET, the CPU is in the same state as before the
+;                 interrupt occured.
+
 isr_common:
     pusha
 
     mov ax, ds
-    push eax        ; save ds
+    push eax        ; save DS
 
     mov ax, 0x10
     mov ds, ax
@@ -91,9 +121,9 @@ isr_common:
     mov fs, ax
     mov gs, ax
     
-    call isr_handler
+    call interrupt_handler
 
-    pop ebx         ; restore ds
+    pop ebx         ; restore DS
     mov ds, bx
     mov es, bx
     mov fs, bx
@@ -101,74 +131,6 @@ isr_common:
 
     popa
 
-    add esp, 8
-    sti
-    iret
-
-extern irq_handler
-irq_common:
-    pusha
-
-    mov ax, ds
-    push eax
-
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    
-    call irq_handler
-    
-    pop ebx
-    mov ds, bx
-    mov es, bx
-    mov fs, bx
-    mov gs, bx
-
-    popa
-
-    add esp, 4
-    sti
-    iret
-
-global irq0
-extern sched
-irq0:
-    cli
-    
-    pusha
-    mov eax, 0x10
-    mov ds, eax
-    mov es, eax
-    mov gs, eax
-    mov fs, eax
-
-    call sched
-
-extern syscall_handler
-global _syscall_handler
-_syscall_handler:
-    pusha
-	
-    mov ax, ds
-    push eax
-
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-        
-    call syscall_handler
-    	
-    pop ebx
-    mov ds, bx
-    mov es, bx
-    mov fs, bx
-    mov gs, bx
-    
-    add esp, 4*8
-	   
+    add esp, 8		; Skipp error code and ISR number
     sti
     iret

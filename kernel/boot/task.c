@@ -7,7 +7,7 @@
 
 extern void user_space_switch(u32 eip, u32 esp, u32 ss, u32 cs);
 
-extern void __sched(struct regs regs, u32 eip, u32 cs, u32 eflags, u32 esp, u32 ss);
+extern void execute_task(task_info_t info);
 extern u32 kernel_stack;
 extern void tss_flush(u32 index);
 
@@ -65,22 +65,22 @@ save_current_task(interrupt_frame_t frame)
     current_task->info.eflags = frame.eflags;
 }
 
+static void
+do_sched()
+{
+	current_task = current_task->next;
+
+    execute_task(current_task->info);
+}
+
 void
 sched(interrupt_frame_t frame)
 {
     save_current_task(frame);
-	
-	current_task = current_task->next;
-
-    __sched(current_task->info.regs,
-            current_task->info.eip,
-            current_task->info.cs,
-            current_task->info.eflags,
-            current_task->info.esp,
-            current_task->info.ss);
+    do_sched();
 }
 
-u32
+void
 fork(interrupt_frame_t frame)
 {	
 	task_header_t *new_header = (task_header_t *) kmalloc(sizeof(task_header_t));
@@ -97,6 +97,7 @@ fork(interrupt_frame_t frame)
 	current_task->next->next = current_task;
 	
 	new_header->info.regs.eax = 0;
+	current_task->info.regs.eax = 1;
 	
-	return 1;
+	do_sched();
 }

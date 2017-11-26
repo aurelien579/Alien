@@ -9,6 +9,7 @@
 #include <alien/mm.h>
 #include <alien/vfs.h>
 #include <alien/initrd.h>
+#include <alien/ata.h>
 
 #include <assert.h>
 
@@ -16,12 +17,10 @@
 #include "idt.h"
 #include "vm86.h"
 
-
 void
-panic(char* msg)
+panic(const char *msg)
 {
     kprintf("[PANIC] %s\n", msg);
-    while (1);
 }
 
 int
@@ -82,17 +81,13 @@ user_test()
 }
 
 void
-kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_start)
+kernel_main(struct mb_info* mb_info)
 {
-    kinfo.vbase = vbase;
-    kinfo.len = len;
-    kinfo.start = kernel_start;
-    
+    kprintf("kernel_end : 0x%x\n", KERNEL_END);
+    kinfo.vbase = KERNEL_VBASE;
+    kinfo.len = KERNEL_END;
+    kinfo.start = KERNEL_START;
     kcls();
-
-    if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-        panic("Invalid multiboot flag !");
-	}
 	
     if (parse_boot_info(mb_info) < 0) {
         panic("Can't get boot informations from multiboot informations");
@@ -117,11 +112,11 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_s
 		kinfo.len = mod_list->mod_end;
 	}
 	
+	kprintf("Boot Device: 0x%x\n", mb_info->boot_device);
+	
     init_paging();
 	kmalloc_init();
-	
-
-	
+		
 	//vfs_node_t root;
 	
 	/*init_initrd(mod_list->mod_start + kinfo.vbase, &root);
@@ -136,7 +131,7 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_s
 	kprintf("%s\n", buffer);
 	*/
 	
-    u32 cr3 = create_user_pagedir();
+    /*u32 cr3 = create_user_pagedir();
 	switch_page_dir(cr3);
 	
 	u32 page = alloc_page(0x400000, 1);
@@ -147,7 +142,9 @@ kernel_main(struct mb_info* mb_info, u32 magic, u32 vbase, u32 len, u32 kernel_s
 	
     tasking_init(cr3, page, stack, 0x23, 0x1B);
 
-    usermode();
-
+    usermode();*/
+    
+    
+    ata_init();
     kputs("Boot !");
 }

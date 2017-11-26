@@ -1,6 +1,5 @@
-global loader
-extern kernel_main
 
+EXTERN __KERNEL_VBASE__
 MB_MAGIC        equ  0x1BADB002
 MB_MODALIGN     equ  1<<0
 MB_MEMINFO      equ  1<<1
@@ -12,19 +11,20 @@ MB_CHECKSUM     equ -(MB_MAGIC + MB_FLAGS)
 ; enabled. Note that this is not the virtual address where the kernel
 ; image itself is loaded -- just the amount that must be subtracted from
 ; a virtual address to get a physical address.
-global KERNEL_VIRTUAL_BASE
-KERNEL_VIRTUAL_BASE equ 0xC0000000                  ; 3GB
-KERNEL_PAGE_NUMBER  equ (KERNEL_VIRTUAL_BASE >> 22) ; Page directory index of
+
+KERNEL_PAGE_NUMBER  equ (0xC0000000 >> 22) ; Page directory index of
                                                     ; kernel's 4MB PTE.
 KERNEL_STACKSIZE    equ 0x8000
 
-section .multiboot
+
+SECTION .multiboot
 align 0x1000
     dd MB_MAGIC
     dd MB_FLAGS
     dd MB_CHECKSUM
 
-section .data
+
+SECTION .data
 align 0x1000
 boot_page_directory:
     ; This page directory entry identity-maps the first 4MB of the 32-bit
@@ -43,14 +43,14 @@ boot_page_directory:
     dd 0x00000083
     times (1024 - KERNEL_PAGE_NUMBER - 1) dd 0  ; Pages after the kernel image.
 
-section .text
-align 0x4
+
+SECTION .text
+GLOBAL loader, kernel_stack
+EXTERN kernel_main, kprintf
 
 ; setting up entry point for linker
-;loader equ (_hloader - KERNEL_VIRTUAL_BASE)
-global loader
 loader:
-    mov ecx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
+    mov ecx, (boot_page_directory - 0xC0000000)
     mov cr3, ecx                    ; Load Page Directory Base Register.
 
     mov ecx, cr4
@@ -68,11 +68,6 @@ loader:
     lea ecx, [higher_half_loader]
     jmp ecx                         ; NOTE: Must be absolute jump!
 
-extern _kernel_end
-kernel_end equ (_kernel_end - KERNEL_VIRTUAL_BASE)
-
-extern _kernel_start
-kernel_start equ (_kernel_start - KERNEL_VIRTUAL_BASE)
 higher_half_loader:
     ; Unmap the identity-mapped first 4MB of physical address space.
     ; It should not be needed anymore.
@@ -86,21 +81,25 @@ higher_half_loader:
     ; We now have a higher-half kernel.
     mov esp, kernel_stack                       ; Set up the stack
     
-    push kernel_start
-    push kernel_end
-    push KERNEL_VIRTUAL_BASE
-    push eax                                    ; Pass Multiboot magic number
-
+    cmp eax, 0x2BADB002
+    jne .multiboot_error
+    
     ; Pass Multiboot info structure
     ; WARNING: This is a physical address and may not be in the first 4MB!
-    add ebx, KERNEL_VIRTUAL_BASE
+    add ebx, __KERNEL_VBASE__
     push ebx
 
     call  kernel_main       ; call kernel proper
+    
+.multiboot_error:
+    push .error_msg
+    call kprintf
+    
     jmp $
-
-global kernel_stack
-section .bss
+    
+.error_msg: db 'Multiboot magic error', 0
+    
+SECTION .bss
 align 0x20
 kernel_stack_start:
     resb KERNEL_STACKSIZE
