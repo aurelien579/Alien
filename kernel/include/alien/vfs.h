@@ -8,7 +8,7 @@
 typedef struct vfs_node vfs_node_t;
 
 typedef i64 (*vfs_node_read_t) (const vfs_node_t *node, u32 offset,
-								u32 len, u8 *dest);
+                                u32 len, u8 *dest);
 
 typedef i64 (*vfs_node_write_t) (const vfs_node_t *node, u32 offset,
 								 u32 len, const u8 *src);

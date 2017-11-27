@@ -1,4 +1,5 @@
 #include <alien/kernel.h>
+#include <alien/ata.h>
 
 #define ATA_DEVICE_COUNT 		4
 
@@ -20,30 +21,31 @@
 #define ATA_TYPE_PATA       4
 #define ATA_TYPE_SATA       6
 
-struct ata_device
+struct ata_data
 {
 	u8 type;
 	u16 base_port;
 	u16 control_port;
 	u8 slave_bit;
+    u32 pos;
     u8 lba48_support;
     u64 lba48_total;
     u32 lba28_total;
 } __attribute__((packed));
 
-struct ata_device devices[ATA_DEVICE_COUNT] =
+struct ata_data devices[ATA_DEVICE_COUNT] =
 {
-	{ ATA_TYPE_UNKNOWN, 0x1F0, 0x3F6, 0, 0, 0, 0 },
-	{ ATA_TYPE_UNKNOWN, 0x1F0, 0x3F6, 1 << 4, 0, 0, 0 },
-	{ ATA_TYPE_UNKNOWN, 0x170, 0x376, 0, 0, 0, 0 },
-	{ ATA_TYPE_UNKNOWN, 0x170, 0x376, 1 << 4, 0, 0, 0 }
+	{ ATA_TYPE_UNKNOWN, 0x1F0, 0x3F6, 0, 0, 0, 0, 0 },
+	{ ATA_TYPE_UNKNOWN, 0x1F0, 0x3F6, 1 << 4, 0, 0, 0, 0 },
+	{ ATA_TYPE_UNKNOWN, 0x170, 0x376, 0, 0, 0, 0, 0 },
+	{ ATA_TYPE_UNKNOWN, 0x170, 0x376, 1 << 4, 0, 0, 0, 0 }
 };
 
 extern void iowait(void);
-extern int ata_send_identify(struct ata_device *dev, u16 *buffer);
+extern int ata_send_identify(struct ata_data *dev, u16 *buffer);
 
 static void
-ata_detect(struct ata_device *device)
+ata_detect(struct ata_data *device)
 {
 	u8 status, sector_mid, sector_hi;
 	
@@ -75,7 +77,7 @@ ata_detect(struct ata_device *device)
 
 
 static void
-ata_identify(struct ata_device *dev)
+ata_identify(struct ata_data *dev)
 {
     if (dev->type == ATA_TYPE_UNKNOWN)
         return;
@@ -92,8 +94,8 @@ ata_identify(struct ata_device *dev)
     dev->lba28_total = *((u32*)(&buffer[60]));
 }
 
-static i32
-atapi_read(struct ata_device *dev, u32 lba, u8 *buffer, u16 maxlen)
+i32
+atapi_read(struct ata_data *dev, u32 lba, u8 *buffer, u16 maxlen)
 {
     u8 read_cmd[12] = { 0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     u8 status;
@@ -140,18 +142,35 @@ atapi_read(struct ata_device *dev, u32 lba, u8 *buffer, u16 maxlen)
     return size;
 }
 
+static int
+ata_read(struct device *dev, byte_t *out, int len)
+{
+    struct ata_data *data = (struct ata_data *) dev->driver_data;
+    if (data->type == ATA_TYPE_PATAPI || data->type == ATA_TYPE_SATAPI) {
+        int read_len = atapi_read(data, data->pos, (u8*) out, (u16) len);
+        data->pos += read_len;
+        return read_len;
+    } else {
+        kprintf("Could not read not pi ata device\n");
+        return -1;
+    }
+}
+
 void
-ata_init()
+ata_probe(struct device *dev)
 {
     for (int i = 1; i < ATA_DEVICE_COUNT; i++) {
         ata_detect(&devices[i]);
         ata_identify(&devices[i]);
+        
+        if (devices[i].type != ATA_TYPE_UNKNOWN) {
+            struct device *ata_dev = (struct device *) kmalloc(sizeof(struct device));
+            ata_dev->parent = dev;
+            ata_dev->children = 0;
+            ata_dev->driver = find_driver("ata");
+            
+            ata_dev->driver_data = &devices[i];
+            ata_dev->read = ata_read;
+        }
     }
-
-    struct ata_device *dev = &devices[0];
-    
-    u8 buffer[2048];
-    atapi_read(dev, 0x2f, buffer, 2048);
-    kprintf("buffer : 0x%x\n", buffer);
-    while(1);
 }

@@ -21,6 +21,7 @@ void
 panic(const char *msg)
 {
     kprintf("[PANIC] %s\n", msg);
+    while(1);
 }
 
 int
@@ -112,11 +113,9 @@ kernel_main(struct mb_info* mb_info)
 		kinfo.len = mod_list->mod_end;
 	}
 	
-	kprintf("Boot Device: 0x%x\n", mb_info->boot_device);
-	
     init_paging();
 	kmalloc_init();
-		
+	
 	//vfs_node_t root;
 	
 	/*init_initrd(mod_list->mod_start + kinfo.vbase, &root);
@@ -144,7 +143,11 @@ kernel_main(struct mb_info* mb_info)
 
     usermode();*/
     
+    //ata_init();
     
-    ata_init();
+    pci_init();
+    
     kputs("Boot !");
+    
+    while(1);
 }

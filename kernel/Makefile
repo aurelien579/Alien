@@ -30,7 +30,10 @@ OBJECTS = \
 	fs/vfs.o \
 	fs/initrd.o \
 	drivers/ata/ata.o \
-	drivers/ata/ata_asm.o
+	drivers/ata/ata_asm.o \
+	fs/iso9660/iso9660.o \
+	drivers/pci.o \
+	lib/list.o
 
 $(KERNEL_OUT): $(OBJECTS) linker.ld modules
 	$(LD) -T linker.ld -o $@  $(OBJECTS) $(LFLAGS)

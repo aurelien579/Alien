@@ -96,4 +96,18 @@ insw(u16 port, u16 *data, u32 count)
     );
 }
 
+static inline u32
+inl(u16 port)
+{
+    u32 ret;
+    asm volatile ("inl %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+static inline void
+outl(u16 port, u32 data)
+{
+    asm volatile ("outl %0, %1" :: "a"(data), "Nd"(port));
+}
+
 #endif
