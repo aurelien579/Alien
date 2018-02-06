@@ -10,7 +10,7 @@ char* strcat(char *dest, const char *src)
 
 int strcmp(const char* s1, const char* s2)
 {
-    while(*s1 && (*s1==*s2))
+    while (*s1 && (*s1==*s2))
         s1++, s2++;
     return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }
@@ -18,8 +18,7 @@ int strcmp(const char* s1, const char* s2)
 char *strcpy(char *dest, const char* src)
 {
     char *ret = dest;
-    while ((*dest++ = *src++))
-        ;
+    while ((*dest++ = *src++)) ;
     return ret;
 }
 
@@ -44,8 +43,8 @@ char *strncat(char *dest, const char *src, unsigned int n)
 
 int strncmp(const char* s1, const char* s2, unsigned int n)
 {
-    while(n--)
-        if(*s1++ != *s2++)
+    while (n--)
+        if (*s1++ != *s2++)
             return *(unsigned char*) (s1 - 1) - *(unsigned char*) (s2 - 1);
     return 0;
 }
@@ -62,7 +61,7 @@ void *memcpy(void *dest, const void *src, unsigned int n)
 void *memset(void *s, int c, unsigned int n)
 {
     unsigned char* p = s;
-    while(n--)
+    while (n--)
         *p++ = (unsigned char) c;
     return s;
 }
@@ -70,7 +69,7 @@ void *memset(void *s, int c, unsigned int n)
 void *memsetw(void *s, int c, unsigned int n)
 {
     unsigned short* p = s;
-    while(n--)
+    while (n--)
         *p++ = (unsigned short) c;
     return s;
 }
@@ -78,8 +77,7 @@ void *memsetw(void *s, int c, unsigned int n)
 char* itoa(int value, char* result, int base)
 {
     // check that the base if valid
-    if (base < 2 || base > 36)
-    {
+    if (base < 2 || base > 36) {
         *result = '\0';
         return result;
     }
@@ -91,17 +89,15 @@ char* itoa(int value, char* result, int base)
         tmp_value = value;
         value /= base;
         *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
-    } while ( value );
+    } while (value);
 
     // Apply negative sign
-    if (tmp_value < 0)
-        *ptr++ = '-';
+    if (tmp_value < 0) *ptr++ = '-';
 
     *ptr-- = '\0';
-    while(ptr1 < ptr)
-    {
+    while (ptr1 < ptr) {
         tmp_char = *ptr;
-        *ptr--= *ptr1;
+        *ptr-- = *ptr1;
         *ptr1++ = tmp_char;
     }
 

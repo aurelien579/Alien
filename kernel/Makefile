@@ -1,54 +1,30 @@
-export INCLUDE_DIR=$(shell pwd)/include
+INCLUDES	= -Iio/include -Ilib/include
+SOURCES		= $(wildcard boot/*.c) \
+			  $(wildcard boot/*.asm) \
+			  $(wildcard lib/*.c)
 
-include ../make.conf
-include make.conf
+OBJECTS		= $(patsubst %.c, %.o, $(patsubst %.asm, %.o, $(SOURCES)))
 
-MODULES 	= 
-LIBS		= $(foreach m, $(MODULES), -l$(m))
-SEARCH_DIR 	= $(foreach m, $(MODULES), -L$(m)/)
-LD 			= ld
-LFLAGS 		= -melf_i386 $(SEARCH_DIR) $(LIBS)
+LD			= i686-elf-ld
+LFLAGS		= 
+ASM			= nasm
+ASMFLAGS	= -f elf32
+CC			= i686-elf-gcc
+CFLAGS		= -ffreestanding -Wall -Wextra $(INCLUDES)
+TARGET		= kernel.bin
 
-OBJECTS = \
-	boot/loader.o \
-	boot/kernel.o \
-	boot/gdt.o \
-	boot/gdt_asm.o \
-	boot/idt.o \
-	boot/idt_asm.o \
-	boot/task_asm.o \
-	boot/vm86.o \
-	boot/task.o \
-	lib/io.o \
-	lib/printf.o \
-	lib/string.o \
-	core/vga.o \
-	devices/console.o \
-	memory/paging.o \
-	memory/kmalloc.o \
-	memory/switch_pagedir.o \
-	fs/vfs.o \
-	fs/initrd.o \
-	drivers/ata/ata.o \
-	drivers/ata/ata_asm.o \
-	fs/iso9660/iso9660.o \
-	drivers/pci.o \
-	lib/list.o
+all: $(TARGET)
 
-$(KERNEL_OUT): $(OBJECTS) linker.ld modules
-	$(LD) -T linker.ld -o $@  $(OBJECTS) $(LFLAGS)
+$(TARGET): $(OBJECTS) linker.ld
+	$(LD)  $(LFLAGS) -T linker.ld -o $@ $(OBJECTS)
 
-modules:
-	$(foreach m, $(MODULES), cd $(m) && make)
+%.o: %.asm
+	$(ASM) $(ASMFLAGS) $< -o $@
 
-%.o: %.c modules
+%.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-%.o: %.asm modules
-	$(AS) $(AFLAGS) -o $@ $<
+.PHONY: clean
 
 clean:
-	rm -f $(OBJECTS)
-	rm -f $(KERNEL_OUT)
-
-.PHONY: clean modules
+	@rm -f $(OBJECTS) $(TARGET)
