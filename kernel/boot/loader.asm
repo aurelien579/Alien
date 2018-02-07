@@ -1,3 +1,13 @@
+;-------------------------------------------------------------------------------
+; SOURCE NAME   : loader.asm
+; VERSION       : 0.1
+; CREATED DATE  : 06/02/2018
+; LAST UPDATE   : 06/02/2018
+; AUTHOR        : Aurélien Martin
+; DESCRIPTION   : This is the kernel's loader. It maps the kernel at
+;  __KERNEL_VBASE__ using a basic page table.
+;-------------------------------------------------------------------------------
+
 EXTERN __KERNEL_VBASE__
 
 MB_MAGIC            equ 0x1BADB002
@@ -53,8 +63,6 @@ higher_half_loader:
     push ebx
     call  kernel_main       ; call kernel proper
 
-    cli
-    hlt
     jmp $
 
 

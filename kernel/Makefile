@@ -1,7 +1,10 @@
-INCLUDES	= -Iio/include -Ilib/include
+INCLUDES	= -Iio/include -Ilib/include -Iboot/include -Icpu/include -Idebug/include
 SOURCES		= $(wildcard boot/*.c) \
 			  $(wildcard boot/*.asm) \
-			  $(wildcard lib/*.c)
+			  $(wildcard lib/*.c) \
+			  $(wildcard debug/*.c) \
+			  $(wildcard cpu/*.c) \
+			  $(wildcard cpu/*.asm)
 
 OBJECTS		= $(patsubst %.c, %.o, $(patsubst %.asm, %.o, $(SOURCES)))
 
@@ -16,13 +19,16 @@ TARGET		= kernel.bin
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS) linker.ld
-	$(LD)  $(LFLAGS) -T linker.ld -o $@ $(OBJECTS)
+	@echo 'Linking $@'
+	@$(LD)  $(LFLAGS) -T linker.ld -o $@ $(OBJECTS)
 
 %.o: %.asm
-	$(ASM) $(ASMFLAGS) $< -o $@
+	@echo 'Compiling $<'
+	@$(ASM) $(ASMFLAGS) $< -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+	@echo 'Compiling $<'
+	@$(CC) $(CFLAGS) -o $@ -c $<
 
 .PHONY: clean
 

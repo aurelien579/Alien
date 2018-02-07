@@ -1,14 +1,20 @@
-#include <stdint.h>
-#include "console.h"
+/*******************************************************************************
+ * SOURCE NAME  : boot.c
+ * VERSION      : 0.1
+ * CREATED DATE : 06/02/2018
+ * LAST UPDATE  : 06/02/2018
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Contains the initial code executed after the bootloader.
+ ******************************************************************************/
 
+#include <stdint.h>
+#include <stdio.h>
+
+#include <kernel/debug.h>
+#include <kernel/cpu/gdt.h>
+#include <kernel/cpu/idt.h>
 
 #if 0
-void panic(const char *msg)
-{
-    kprintf("[PANIC] %s\n", msg);
-    while(1);
-}
-
 int parse_boot_info(struct mb_info *mbi)
 {
     if (MB_CHECK_FLAG (mbi->flags, 2))
@@ -29,13 +35,6 @@ int parse_boot_info(struct mb_info *mbi)
 
     return 0;
 }
-
-void dump_regs(struct regs r)
-{
-    kprintf("=== DUMP REGISTERS ===\n");
-    kprintf("eax: 0x%x, ebx: 0x%x, ecx: 0x%x, edx: 0x%x\n", r.eax, r.ebx, r.ecx, r.edx);
-    kprintf("esi: 0x%x, edi: 0x%x, esp: 0x%x, ebp: 0x%x\n", r.esi, r.edi, r.esp, r.ebp);
-}
 #endif
 
 /**
@@ -43,5 +42,7 @@ void dump_regs(struct regs r)
  */
 void kernel_main(void)
 {
-    boot_print("Hello");
+    gdt_install();
+    idt_install();
+    printf("Hello\n");
 }

@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * SOURCE NAME  : string.h
+ * VERSION      : 0.1
+ * CREATED DATE : 07/02/2018
+ * LAST UPDATE  : 07/02/2018
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Provides functions for manipulating strings.
+ ******************************************************************************/
+
 #ifndef LIB_STRING_H
 #define LIB_STRING_H
 

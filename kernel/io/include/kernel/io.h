@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * SOURCE NAME  : io.h
+ * VERSION      : 0.1
+ * CREATED DATE : 07/02/2018
+ * LAST UPDATE  : 07/02/2018
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Provides functions for accessing cpu io ports.
+ ******************************************************************************/
+
 #ifndef IO_IO_H
 #define IO_IO_H
 
