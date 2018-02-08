@@ -1,8 +1,5 @@
 /*******************************************************************************
  * SOURCE NAME  : idt.c
- * VERSION      : 0.1
- * CREATED DATE : 07/02/2018
- * LAST UPDATE  : 07/02/2018
  * AUTHOR       : Aurélien Martin
  * DESCRIPTION  : Provide basic routines for managing the IDT. You must call
  *  idt_install before anything else. Then you can set your own exceptions/irqs
@@ -24,9 +21,7 @@
 
 
 /*******************************************************************************
- * 
  *                          PRIVATE STRUCTURES
- * 
  ******************************************************************************/
 
 struct idt_entry
@@ -47,22 +42,20 @@ struct idt_ptr
 struct isr_frame
 {
     uint32_t    ds;
-	struct regs regs;
-	uint32_t    int_no;
-	uint32_t    errorcode;
-	uint32_t    eip;
-	uint32_t    cs;
-	uint32_t    eflags;
-	uint32_t    esp;
-	uint32_t    ss;
+    struct regs regs;
+    uint32_t    int_no;
+    uint32_t    errorcode;
+    uint32_t    eip;
+    uint32_t    cs;
+    uint32_t    eflags;
+    uint32_t    esp;
+    uint32_t    ss;
 } __attribute__((packed));
 
 
 
 /*******************************************************************************
- * 
  *                          EXTERN FUNCTIONS
- * 
  ******************************************************************************/
 
 /* All defined in cpu.asm */
@@ -137,12 +130,12 @@ static exception_handler_t  exception_handlers[32];
 static void syscall_handler(uint32_t ds, struct isr_frame frame)
 {
     if (frame.regs.eax == 0x00) {
-		kprintf("%d\n", frame.regs.ebx);
-	} else if (frame.regs.eax == 0x01) {
-		fork(frame);
-	} else {
-		kprintf("unknown syscall!\n");
-	}
+        kprintf("%d\n", frame.regs.ebx);
+    } else if (frame.regs.eax == 0x01) {
+        fork(frame);
+    } else {
+        kprintf("unknown syscall!\n");
+    }
 }
 #endif
 
@@ -274,11 +267,11 @@ void irq_ack(uint32_t irq)
 
 void interrupt_handler(struct isr_frame frame)
 {
-	if (frame.int_no < 32) {
+    if (frame.int_no < 32) {
         exception_handler(frame.int_no, frame.errorcode, &frame.regs);
-	} else {
+    } else {
         irq_handler(frame.int_no - 32, &frame.regs);
-	}
+    }
 }
 
 void enable_irq(uint32_t irq)

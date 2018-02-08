@@ -1,8 +1,5 @@
 /*******************************************************************************
  * SOURCE NAME  : console.c
- * VERSION      : 0.1
- * CREATED DATE : 07/02/2018
- * LAST UPDATE  : 07/02/2018
  * AUTHOR       : Aurélien Martin
  * DESCRIPTION  : Implements a VERY basic console used during initializion stage.
  ******************************************************************************/
@@ -13,18 +10,18 @@
 #define COLOR 0x0F
 
 
-/**
- * SECTION: Private variables
- */
+/*******************************************************************************
+ *                          PRIVATE VARIABLES
+ ******************************************************************************/
 
 static int x = 0;
 static int y = 0;
 static uint16_t *vgamem = (uint16_t *) 0xC00B8000;
 
 
-/**
- * SECTION: Private functions
- */
+/*******************************************************************************
+ *                          PRIVATE FUNCTIONS
+ ******************************************************************************/
 
 static void vga_write(char c, uint8_t color)
 {
@@ -42,9 +39,10 @@ static void update_cursor()
     vga_write(' ', 0x07);
 }
 
-/**
- * SECTION: Public functions
- */
+
+/*******************************************************************************
+ *                          PUBLIC FUNCTIONS
+ ******************************************************************************/
 
 void boot_clear()
 {

@@ -1,8 +1,5 @@
 /*******************************************************************************
  * SOURCE NAME  : string.c
- * VERSION      : 0.1
- * CREATED DATE : 07/02/2018
- * LAST UPDATE  : 07/02/2018
  * AUTHOR       : Aurélien Martin
  * DESCRIPTION  : Implements functions for manipulating strings.
  ******************************************************************************/

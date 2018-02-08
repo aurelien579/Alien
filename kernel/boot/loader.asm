@@ -8,7 +8,7 @@
 ;  __KERNEL_VBASE__ using a basic page table.
 ;-------------------------------------------------------------------------------
 
-EXTERN __KERNEL_VBASE__
+EXTERN __KERNEL_VBASE__, __KERNEL_END__
 
 MB_MAGIC            equ 0x1BADB002
 MB_MODALIGN         equ 1 << 0
@@ -39,7 +39,7 @@ entry:
     mov dword [ecx + KERNEL_PAGE_NUMBER * 4], 0x00000083    ; Also map it at the actual offset
 
     mov ecx, (boot_page_directory - 0xC0000000)
-    
+
     mov cr3, ecx                    ; Load Page Directory Base Register.
 
     mov ecx, cr4
@@ -55,10 +55,10 @@ entry:
 
 higher_half_loader:
     mov dword [boot_page_directory], 0
-    invlpg [0]    
-    
+    invlpg [0]
+
     mov esp, kernel_stack
-    
+
     add ebx, __KERNEL_VBASE__
     push ebx
     call  kernel_main       ; call kernel proper
@@ -77,4 +77,3 @@ boot_page_directory:
 kernel_stack_start:
     resb KERNEL_STACKSIZE
 kernel_stack:
-

@@ -1,8 +1,5 @@
 /*******************************************************************************
  * SOURCE NAME  : idt.h
- * VERSION      : 0.1
- * CREATED DATE : 07/02/2018
- * LAST UPDATE  : 07/02/2018
  * AUTHOR       : Aurélien Martin
  * DESCRIPTION  : Provide basic routines for managing the IDT. You must call
  *  idt_install before anything else. Then you can set your own exceptions/irqs

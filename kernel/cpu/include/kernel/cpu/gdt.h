@@ -1,8 +1,5 @@
 /*******************************************************************************
  * SOURCE NAME  : gdt.h
- * VERSION      : 0.1
- * CREATED DATE : 07/02/2018
- * LAST UPDATE  : 07/02/2018
  * AUTHOR       : Aurélien Martin
  * DESCRIPTION  : Provide basic routines for managing the GDT, installing it and
  *  adding entries.

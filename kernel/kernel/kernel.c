@@ -1,12 +1,9 @@
 /*******************************************************************************
- * SOURCE NAME  : stdio.c
+ * SOURCE NAME  : kernel.c
  * AUTHOR       : Aurélien Martin
- * DESCRIPTION  : Implements most simple io functions.
+ * DESCRIPTION  : Just store the KERNEL structure actually.
  ******************************************************************************/
 
-#include <kernel/boot/console.h>
+#include <kernel/kernel.h>
 
-void putc(char c)
-{
-    boot_putchar(c);
-}
+struct kernel KERNEL;
