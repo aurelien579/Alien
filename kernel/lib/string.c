@@ -28,6 +28,18 @@ char *strcpy(char *dest, const char* src)
     return ret;
 }
 
+char *strncpy(char *dest, const char* src, unsigned int n)
+{
+    char *ret = dest;
+    while ((*dest++ = *src++)) ;
+    
+    while (n--) {
+        if ((*dest++ = *src++)) return ret;
+    }
+    
+    return ret;
+}
+
 unsigned int strlen(const char *s)
 {
     unsigned int i;

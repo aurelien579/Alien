@@ -50,5 +50,25 @@ static inline void outl(uint16_t port, uint32_t data)
     asm volatile ("outl %0, %1" :: "a"(data), "Nd"(port));
 }
 
+static inline void outsw(uint16_t port, uint16_t *data, uint32_t count)
+{
+    asm volatile ("mov %2, %%ecx \n"
+                  "mov %0, %%esi \n"
+                  "mov %1, %%dx \n"
+                  "rep outsw"
+                  :: "m"(data), "Nd"(port), "m"(count) : "ecx", "esi"
+    );
+}
+
+static inline void insw(uint16_t port, uint16_t *data, uint32_t count)
+{
+    asm volatile ("mov %2, %%ecx \n"
+                  "mov %0, %%edi \n"
+                  "mov %1, %%dx \n"
+                  "rep insw"
+                  :: "m"(data), "Nd"(port), "m"(count) : "ecx", "edi"
+    );
+}
+
 #endif
 

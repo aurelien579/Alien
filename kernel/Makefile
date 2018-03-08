@@ -1,5 +1,5 @@
 INCLUDES	= -Iio/include -Ilib/include -Iboot/include -Icpu/include \
-			  -Idebug/include -Imemory/include -Ikernel/include
+			  -Idebug/include -Imemory/include -Ikernel/include -Idevice/include
 
 SOURCES		= $(wildcard boot/*.c) \
 			  $(wildcard boot/*.asm) \
@@ -10,6 +10,7 @@ SOURCES		= $(wildcard boot/*.c) \
 			  $(wildcard memory/*.c) \
 			  $(wildcard memory/*.asm) \
 			  $(wildcard kernel/*.c) \
+			  $(wildcard device/*.c) \
 
 OBJECTS		= $(patsubst %.c, %.o, $(patsubst %.asm, %.o, $(SOURCES)))
 
