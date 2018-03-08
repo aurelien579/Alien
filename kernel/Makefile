@@ -1,5 +1,4 @@
-INCLUDES	= -Iio/include -Ilib/include -Iboot/include -Icpu/include \
-			  -Idebug/include -Imemory/include -Ikernel/include -Idevice/include
+INCLUDES	= -Iinclude
 
 SOURCES		= $(wildcard boot/*.c) \
 			  $(wildcard boot/*.asm) \
