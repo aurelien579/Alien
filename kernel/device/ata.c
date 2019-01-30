@@ -58,16 +58,14 @@ struct ata_device
     uint16_t base_port;
     uint16_t control_port;
     uint8_t slave_bit;
-
+    
     uint8_t lba48_support;
     uint64_t lba48_total;
     uint32_t lba28_total;
-
+    
     uint32_t pos;
 };
 
-
-static struct ata_device ata_devices[4];
 
 
 /*******************************************************************************
@@ -91,8 +89,7 @@ ata_wait(int n)
 {
     for (int i = 0; i < n; i++) {
         inb(0x3F6);
-    }
-}
+    }}
 
 static inline uint8_t
 ata_read_status(struct ata_device *d)
@@ -104,11 +101,11 @@ static inline uint8_t
 ata_wait_bsy_clear(struct ata_device *d)
 {
     uint8_t status;
-
+    
     do {
         status = ata_read_status(d);
     } while (ATA_ISBSY(status));
-
+    
     return status;
 }
 
@@ -116,11 +113,11 @@ static inline uint8_t
 ata_wait_drq_set(struct ata_device *d)
 {
     uint8_t status;
-
+    
     do {
         status = ata_read_status(d);
     } while (!ATA_ISDRQ(status) && !ATA_ISERR(status));
-
+    
     return status;
 }
 
@@ -144,70 +141,12 @@ ata_pio_read16(struct ata_device *d)
     return inw(d->base_port + ATA_DATA_PORT);
 }
 
-static void
-ata_log_device(struct ata_device *d)
-{
-    printf("ata_device { base: 0x%x, control: 0x%x, slave: %d }\n",
-           d->base_port, d->control_port, d->slave_bit);
-}
-
 
 
 /*
  * Low level functions
  */
-static result_t atapi_read_sector(struct ata_device *dev,
-                                 uint32_t lba,
-                                 uint8_t *buffer)
-{
-    uint8_t status;
-    int32_t size;
-
-    ata_log_device(dev);
-
-//    ata_select_drive(dev);
-    //printf("Status: 0x%x\n", inb(dev->base_port + ATA_COMMAND_PORT));
-
-    //outb(dev->base_port + ATA_DRIVE_PORT, dev->slave_bit);
-    //ata_wait(4);
-    outb(dev->base_port + ATA_DRIVE_PORT, 0xE0 | (dev->slave_bit) | ((lba >> 24) & 0x0F));
-    outb(dev->base_port + ATA_FEAT_PORT, 0);
-    outb(dev->base_port + ATA_SECTOR_COUNT_PORT, 1);
-
-    outb(dev->base_port + ATA_LBALO_PORT, lba);
-    outb(dev->base_port + ATA_LBAMID_PORT, lba >> 8);
-    outb(dev->base_port + ATA_LBAHI_PORT, lba >> 16);
-
-    outb(dev->base_port + ATA_COMMAND_PORT, 0x20);
-
-    /* Poll */
-    //printf("Status: 0x%x\n", inb(dev->base_port + ATA_COMMAND_PORT));
-
-    /* Wait for BSY bit to clear */
-    while ((status = inb(dev->base_port + ATA_COMMAND_PORT)) & 0x80)
-        ;
-
-    //printf("[ATA] BSY clear 0x%x\n", status);
-
-    while (!((status = inb(dev->base_port + ATA_COMMAND_PORT)) & 0x8)
-        && !(status & 0x1))
-        ;
-
-    if (status & 0x1) {
-        printf("[ATA] ERROR 0x%x\n0", status);
-        return -1;
-    }
-
-    insw(dev->base_port, (uint16_t *) buffer, 256);
-
-    while ((status = inb (dev->base_port + ATA_COMMAND_PORT)) & 0x88)
-        ;
-
-    return size;
-}
-
-#if 0
-static result_t atapi_read_block_bis(struct ata_device *dev,
+static result_t atapi_read_block(struct ata_device *dev,
                                  uint32_t lba,
                                  uint8_t *buffer,
                                  uint32_t maxlen)
@@ -215,53 +154,44 @@ static result_t atapi_read_block_bis(struct ata_device *dev,
     uint8_t read_cmd[12] = { 0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     uint8_t status;
     int32_t size;
-
-    ata_log_device(dev);
-
-    ata_select_drive(dev);
-
+    
     outb(dev->base_port + ATA_DRIVE_PORT, dev->slave_bit);
     ata_wait(4);
-
+    
     outb(dev->base_port + ATA_FEAT_PORT, 0);
-    //outb(dev->base_port + ATA_LBAMID_PORT, maxlen & 0xFF);
-    //outb(dev->base_port + ATA_LBAHI_PORT, maxlen >> 8);
-
-    outb(dev->base_port + ATA_LBAMID_PORT, 0x00);
-    outb(dev->base_port + ATA_LBAHI_PORT, 0x01);
-
+    outb(dev->base_port + ATA_LBAMID_PORT, maxlen & 0xFF);
+    outb(dev->base_port + ATA_LBAHI_PORT, maxlen >> 8);
     outb(dev->base_port + ATA_COMMAND_PORT, 0xA0);
-
+    
     while ((status = inb(dev->base_port + ATA_COMMAND_PORT)) & 0x80)
         ;
-
+    
     while (!((status = inb(dev->base_port + ATA_COMMAND_PORT)) & 0x8)
         && !(status & 0x1))
         ;
-
+    
     if (status & 0x1) {
         return -1;
     }
-
+    
     read_cmd[9] = 1;
     read_cmd[2] = (lba >> 0x18) & 0xFF;
     read_cmd[3] = (lba >> 0x10) & 0xFF;
     read_cmd[4] = (lba >> 0x08) & 0xFF;
     read_cmd[5] = (lba >> 0x00) & 0xFF;
-
+    
     outsw(dev->base_port, (uint16_t *) read_cmd, 6);
-
+    
     size = (((uint32_t) inb(dev->base_port + ATA_LBAHI_PORT)) << 8) |
            ((uint32_t) inb(dev->base_port + ATA_LBAMID_PORT));
-
+    
     insw(dev->base_port, (uint16_t *) buffer, size / 2);
-
+    
     while ((status = inb (dev->base_port + ATA_COMMAND_PORT)) & 0x88)
         ;
-
+       
     return size;
 }
-#endif
 
 /**
  * @brief Select the device provided then send the IDENTIFY command. If the
@@ -276,15 +206,14 @@ static uint8_t
 ata_cmd_identify(struct ata_device *d, uint16_t *buffer)
 {
     uint8_t status, lbahi, lbamid;
-
+    
     ata_select_drive(d);
-
+    
     /* Send the IDENTIFY command */
     outb(d->base_port + ATA_SECTOR_COUNT_PORT, 0);
     outb(d->base_port + ATA_LBALO_PORT, 0);
     outb(d->base_port + ATA_LBAMID_PORT, 0);
     outb(d->base_port + ATA_LBAHI_PORT, 0);
-    
     if (ata_device_is_packet(d)) {
         outb(d->base_port + ATA_COMMAND_PORT, ATA_CMD_PACKET_IDENTIFY);
     } else {
@@ -292,34 +221,34 @@ ata_cmd_identify(struct ata_device *d, uint16_t *buffer)
     }
     
     status = ata_wait_bsy_clear(d);
-    if (status == 0) return 0;
-
+    if (status == 0) return 0;   
+    
     if (ATA_ISERR(status)) {
         printf("[ATA] Error after sending IDENTIFY.", status);
         return 0;
     }
-
+    
     /* Check that lbamid and lbahi are zero */
     lbamid = inb(d->base_port + ATA_LBAMID_PORT);
     lbahi = inb(d->base_port + ATA_LBAHI_PORT);
-
+    
     if (lbamid != 0 || lbahi != 0) {
         printf("[ATA] No ATA device\n");
         return 0;
     }
-
+    
     /* Wait for the data to be ready */
     status = ata_wait_drq_set(d);
     if (ATA_ISERR(status)) {
         printf("[ATA] Error\n");
         return 0;
     }
-
+    
     /* Read the data */
     for (uint32_t i = 0; i < 256; i++) {
         buffer[i] = ata_pio_read16(d);
     }
-
+    
     return 1;
 }
 
@@ -330,22 +259,20 @@ ata_detect(uint16_t base_port,
            struct ata_device *device)
 {
     uint8_t status, sector_mid, sector_hi;
-
+    
     /* Fill the structure */
     device->base_port = base_port;
     device->control_port = control_port;
     device->slave_bit = slave_bit;
-
-    ata_select_drive(device);
-
+    
     /* Reset the drive */
     ata_software_reset(device);
     status = ata_wait_bsy_clear(device);
-
+    
     if (!ATA_ISRDY(status)) {
-        return 0;
+        printf("[ATA] [ERROR] Device not ready. Status : %d\n", status);
     }
-
+    
     /* Read informations to determine if the device supports packet interface */
     sector_mid = inb(base_port + ATA_LBAMID_PORT);
 	sector_hi = inb(base_port + ATA_LBAHI_PORT);
@@ -359,18 +286,17 @@ ata_detect(uint16_t base_port,
 	} else if (sector_mid == 0x3C && sector_hi == 0xC3) {
 		device->type = ATA_TYPE_SATA;
     }
-
+    
     if (ata_device_is_packet(device)) {
         printf("[ATA] Packet device found.\n");
     }
-
+    
     uint16_t buffer[256];
     if (!ata_cmd_identify(device, (uint16_t *) buffer)) {
         printf("Error while identifying device\n");
-        return 0;
     }
-
-
+    
+    
     /* Verify that the device has been correctly identified */
     if (ata_device_is_packet(device)) {
         if (!(buffer[0] & (1 << 15)) && !(buffer[0] & (1 << 14))) {
@@ -380,14 +306,12 @@ ata_detect(uint16_t base_port,
     } else {
         if (buffer[0] & (1 << 15)) {
             printf("Invalid ATA device.\n");
-            return 0;
+            return 0;            
         }
     }
-
-    ata_log_device(device);
-
+    
     printf("Identification done\n");
-
+    
     return 1;
 }
 
@@ -401,28 +325,9 @@ static result_t ata_read(struct device *device,
                          uint32_t *size,
                          uint8_t *out)
 {
-    uint32_t size_read = 0;
-    uint32_t sectors_count = (*size) / 512;
-
-    if ((*size) % 512 != 0) {
-        sectors_count++;
-    }
-
     struct ata_device *ata_dev = ATA_DEV(device);
-    int res; 
-
-    for (uint32_t i = 0; i < sectors_count; i++) {
-        res = atapi_read_sector(ata_dev, ata_dev->pos, out + (i * 512));
-
-        if (res < 0) {
-            *size = size_read;
-            return -1;
-        }
-
-        ata_dev->pos++;
-    }
-
-    *size = size_read;
+    *size = atapi_read_block(ata_dev, ata_dev->pos, out, *size);
+    
     return OK;
 }
 
@@ -430,7 +335,7 @@ static result_t ata_write(struct device *device,
                           uint32_t *size,
                           uint8_t *out)
 {
-
+    
 }
 
 static result_t ata_seek(struct device *device,
@@ -440,7 +345,6 @@ static result_t ata_seek(struct device *device,
     ata_dev->pos = pos;
     return OK;
 }
-
 static void
 ata_register_device(const char *name,
                     struct ata_device *ata_dev)
@@ -449,14 +353,15 @@ ata_register_device(const char *name,
     dev.type = DEVICE_RANDOM;
     strncpy(dev.name, name, DEVICE_NAME_MAX);
     dev.p = ata_dev;
-
+    
     dev.read = ata_read;
     dev.write = ata_write;
     dev.seek = ata_seek;
-
+    
     printf("Device registered : %s\n", name);
-    device_register(&dev);
-}
+    device_register(&dev);}
+
+
 
 
 /*******************************************************************************
@@ -465,19 +370,21 @@ ata_register_device(const char *name,
 
 void ata_install()
 {
-    if (ata_detect(0x1F0, 0x3F6, 0, &ata_devices[0])) {
-        ata_register_device("ATA-0", &ata_devices[0]);
+    struct ata_device ata_dev;
+    
+    if (ata_detect(0x1F0, 0x3F6, 0, &ata_dev)) {
+        ata_register_device("ATA-0", &ata_dev);
     }
-
-    if (ata_detect(0x1F0, 0x3F6, 1 << 4, &ata_devices[1])) {
-        ata_register_device("ATA-1", &ata_devices[1]);
+    
+    if (ata_detect(0x1F0, 0x3F6, 1 << 4, &ata_dev)) {
+        ata_register_device("ATA-1", &ata_dev);
     }
-
-    if (ata_detect(0x170, 0x376, 0, &ata_devices[2])) {
-        ata_register_device("ATA-2", &ata_devices[2]);
+    
+    if (ata_detect(0x170, 0x376, 0, &ata_dev)) {
+        ata_register_device("ATA-2", &ata_dev);
     }
-
-    if (ata_detect(0x170, 0x376, 1 << 4, &ata_devices[3])) {
-        ata_register_device("ATA-3", &ata_devices[3]);
+    
+    if (ata_detect(0x170, 0x376, 1 << 4, &ata_dev)) {
+        ata_register_device("ATA-3", &ata_dev);
     }
 }
