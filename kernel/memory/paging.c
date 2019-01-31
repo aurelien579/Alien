@@ -6,16 +6,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <kernel/memory/paging.h>
 #include <kernel/kernel.h>
 
 #define align(a, b)     \
     if (a % b != 0)     \
         a += b - a % b; \
-
-#define updiv(a, b)     \
-(((a) + (b) - 1) / (b)) \
-
 
 #define LAST_PAGE (uint32_t)PAGE_SIZE * 1023 * 1024
 

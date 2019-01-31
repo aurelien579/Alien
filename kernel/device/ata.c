@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #define ATA_DEV(dev)            ((struct ata_device *) dev->p)
 
@@ -161,7 +162,7 @@ static result_t atapi_read_sector(struct ata_device *dev,
                                  uint8_t *buffer)
 {
     uint8_t status;
-    int32_t size;
+    int32_t size = 0;
 
     ata_log_device(dev);
 
@@ -402,24 +403,36 @@ static result_t ata_read(struct device *device,
                          uint8_t *out)
 {
     uint32_t size_read = 0;
-    uint32_t sectors_count = (*size) / 512;
-
-    if ((*size) % 512 != 0) {
-        sectors_count++;
-    }
-
+    uint32_t sectors_count = updiv(*size, 512);
+    uint8_t buffer[512];
     struct ata_device *ata_dev = ATA_DEV(device);
-    int res; 
 
-    for (uint32_t i = 0; i < sectors_count; i++) {
-        res = atapi_read_sector(ata_dev, ata_dev->pos, out + (i * 512));
-
+    while (size_read < *size) {
+        /* Next sector to read */
+        uint32_t sector = ata_dev->pos / 512;
+        int res = atapi_read_sector(ata_dev, sector, buffer);
         if (res < 0) {
             *size = size_read;
             return -1;
         }
 
-        ata_dev->pos++;
+        /* Where should we start copying bytes from the sector to the output */
+        uint32_t offset = ata_dev->pos - (sector * 512);
+
+        /* Remaining size to read. Only copy remaining bytes if there is less
+           than one sector to read */
+        uint32_t remaining = (*size) - size_read;
+
+        printf("Reading sector %d from 0x%x (remains 0x%x)\n", sector, offset, remaining);
+        if (remaining >= 512) {
+            memcpy(out + size_read, buffer + offset, 512);
+            size_read += (512 - offset);
+            ata_dev->pos += (512 - offset);
+        } else {
+            memcpy(out + size_read, buffer + offset, remaining);
+            size_read += (remaining - offset);
+            ata_dev->pos += (remaining - offset);
+        }
     }
 
     *size = size_read;
