@@ -10,6 +10,7 @@ SOURCES		= $(wildcard boot/*.c) \
 			  $(wildcard memory/*.asm) \
 			  $(wildcard kernel/*.c) \
 			  $(wildcard device/*.c) \
+			  $(wildcard tests/*.c)
 
 OBJECTS		= $(patsubst %.c, %.o, $(patsubst %.asm, %.o, $(SOURCES)))
 
@@ -18,7 +19,7 @@ LFLAGS		=
 ASM			= nasm
 ASMFLAGS	= -f elf32
 CC			= i686-elf-gcc
-CFLAGS		= -ffreestanding -Wall -Wextra $(INCLUDES)
+CFLAGS		= -ffreestanding -Wall -Wextra $(INCLUDES) -O1
 TARGET		= kernel.bin
 
 all: $(TARGET)

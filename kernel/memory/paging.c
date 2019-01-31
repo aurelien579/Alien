@@ -35,42 +35,50 @@ static uint32_t kernel_tab[1024] __attribute__((aligned(PAGE_SIZE)));
 /*******************************************************************************
  *                          PRIVATE FUNCTIONS
  ******************************************************************************/
- 
+
+__attribute__((always_inline))
 static inline void invlpg(uint32_t page)
 {
     asm volatile ("invlpg (%0)" :: "r" (page) : "memory");
 }
 
+__attribute__((always_inline))
 static inline void clear_entry(uint32_t *table, uint16_t i)
 {
     table[i] = 0;
 }
 
+__attribute__((always_inline))
 static inline uint8_t entry_is_present(uint32_t *table, uint16_t i)
 {
     return table[i] & 1;
 }
 
+__attribute__((always_inline))
 static inline uint32_t *get_pagedir()
 {
     return (uint32_t *) 0xFFFFF000;
 }
 
+__attribute__((always_inline))
 static inline uint32_t *get_pagetable(uint32_t i)
 {
     return (uint32_t *) ((1023 << 22) + (i << 12));
 }
 
+__attribute__((always_inline))
 static inline uint32_t get_pagedir_index(uint32_t page)
 {
     return (page & 0xFFC00000) >> 22;
 }
 
+__attribute__((always_inline))
 static inline uint32_t get_pagetab_index(uint32_t page)
 {
     return (page & 0x003FF000) >> 12;
 }
 
+__attribute__((always_inline))
 static inline uint32_t get_entry_frame(uint32_t entry)
 {
     return entry & 0xFFFFF000;
@@ -85,6 +93,7 @@ static void write_entry(uint32_t *table, uint16_t i, uint32_t frame,
     table[i] |= ((is_user & 0x1) << 2);
 }
 
+__attribute__((always_inline))
 static uint8_t page_is_used(uint32_t page)
 {
     uint32_t *dir = get_pagedir();
@@ -108,7 +117,8 @@ static uint8_t page_is_used(uint32_t page)
  * @param after Adress at wich start research
  * @return 0 if there is no more page free
  */
-static uint32_t first_page_free(uint32_t after)
+__attribute__((always_inline))
+static inline uint32_t first_page_free(uint32_t after)
 {
     for (uint32_t page = after; page <= LAST_PAGE; page += PAGE_SIZE) {
         if (!page_is_used(page)) return page;

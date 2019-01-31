@@ -29,6 +29,9 @@ void kernel_main(struct mb_info *boot_info)
     idt_install();
     paging_install(KERNEL.memlen, KERNEL_END);
     
+    test_paging();
+    return;
+
     ata_install();
     
     struct device *dev = device_find("ATA-2");

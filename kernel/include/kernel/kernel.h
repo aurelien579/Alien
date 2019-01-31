@@ -21,6 +21,9 @@ extern uint32_t __KERNEL_VBASE__;
 #define KERNEL_SIZE     ((uint32_t) &__KERNEL_SIZE__)
 #define KERNEL_VBASE    ((uint32_t) &__KERNEL_VBASE__)
 
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
 struct kernel
 {
     uint32_t memlen;
