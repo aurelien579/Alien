@@ -32,21 +32,5 @@ void kernel_main(struct mb_info *boot_info)
     
     ata_install();
     
-    struct device *dev = device_find("ATA-3");
-    uint32_t size = 512;
-    uint8_t out[4096];
-    out[512] = 'c';
-
-    strcpy(out, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab");
-
-    device_random_read(dev, 3, &size, out);
-
-    printf("out: %x\n", out);
-    printf("DATA: %s\n", out);
-    return;
-    if (strcmp(out, "BONJOUR") != 0) {
-        printf("Data error\n");
-    }
-
-    printf("DATA 2: %s\n", &out[512]);
+    test_all();
 }
