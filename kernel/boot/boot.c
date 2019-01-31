@@ -32,7 +32,7 @@ void kernel_main(struct mb_info *boot_info)
     
     ata_install();
     
-    struct device *dev = device_find("ATA-2");
+    struct device *dev = device_find("ATA-3");
     uint32_t size = 512;
     uint8_t out[4096];
     out[512] = 'c';

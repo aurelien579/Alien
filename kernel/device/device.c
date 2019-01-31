@@ -38,6 +38,8 @@ result_t device_register(const struct device *dev)
     if (devices_count >= DEVICES_MAX || !dev) return ERROR;
     
     devices[devices_count++] = *dev;
+
+    printf("[DEV] %s registered\n", dev->name);
     
     return OK;
 }
