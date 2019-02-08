@@ -6,11 +6,9 @@
 
 #include <kernel/memory/paging.h>
 
-void test_paging()
+int test_paging()
 {
     uint32_t pages[8000];
-
-    printf("===== test_paging() =====\n");
 
     for (int i = 0; i < 10; i++) {
         pages[i] = alloc_kpage();
@@ -21,8 +19,7 @@ void test_paging()
     uint32_t newpage = alloc_kpage();
 
     if (oldpage != newpage) {
-        printf("Fail\n");
-        return;
+        return 0;
     }
 
     oldpage = pages[0];
@@ -34,18 +31,18 @@ void test_paging()
 
     newpage = alloc_kpage();
     if (oldpage != newpage) {
-        printf("Fail\n");
-        return;
+        return 0;
     }
 
     free_page(newpage);
 
     for (int i = 0; i < 7500; i++) {
         pages[i] = alloc_kpage();
-        if (pages[i] == 0) {
-            printf("null page %d\n", i);
-        }
     }
 
-    printf("Success\n");
+    for (int i = 0; i < 7500; i++) {
+        free_page(pages[i]);
+    }
+
+    return 1;
 }

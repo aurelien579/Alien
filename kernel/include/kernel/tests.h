@@ -10,6 +10,6 @@
 void test_all();
 
 int test_ata_read();
-void test_paging();
+int test_paging();
 
 #endif
