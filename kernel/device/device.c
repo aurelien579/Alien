@@ -5,6 +5,7 @@
  ******************************************************************************/
 
 #include <kernel/device/device.h>
+#include <stdio.h>
 #include <string.h>
 
 

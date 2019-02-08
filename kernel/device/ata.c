@@ -419,7 +419,6 @@ static result_t ata_read(struct device *device,
                          uint8_t *out)
 {
     uint32_t size_read = 0;
-    uint32_t sectors_count = updiv(*size, 512);
     uint8_t buffer[512];
     struct ata_device *ata_dev = ATA_DEV(device);
 
@@ -462,7 +461,7 @@ static result_t ata_write(struct device *device,
                           uint32_t *size,
                           uint8_t *out)
 {
-
+    return ERROR;
 }
 
 static result_t ata_seek(struct device *device,

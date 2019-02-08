@@ -4,6 +4,7 @@
  * DESCRIPTION  : Tests for the paging module
  ******************************************************************************/
 
+#include <string.h>
 #include <kernel/memory/paging.h>
 
 int test_paging()
@@ -24,7 +25,7 @@ int test_paging()
 
     oldpage = pages[0];
     for (int i = 0; i < 10; i++) {
-        uint8_t *ptr = pages[i];
+        uint8_t *ptr = (uint8_t *) pages[i];
         memset(ptr, 0, 4096);
         free_page(pages[i]);
     }

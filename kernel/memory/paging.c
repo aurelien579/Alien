@@ -91,7 +91,7 @@ static void write_entry(uint32_t *table, uint16_t i, uint32_t frame,
 }
 
 __attribute__((always_inline))
-static uint8_t page_is_used(uint32_t page)
+static inline uint8_t page_is_used(uint32_t page)
 {
     uint32_t *dir = get_pagedir();
     uint32_t dir_idx = get_pagedir_index(page);

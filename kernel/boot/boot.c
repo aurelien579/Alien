@@ -14,6 +14,7 @@
 #include <kernel/memory/paging.h>
 #include <kernel/kernel.h>
 #include <kernel/device/ata.h>
+#include <kernel/tests.h>
 
 #include "multiboot.h"
 

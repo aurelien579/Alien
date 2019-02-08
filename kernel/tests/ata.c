@@ -5,6 +5,7 @@
  ******************************************************************************/
 
 #include <stdint.h>
+#include <string.h>
 #include <kernel/device/device.h>
 
 static uint8_t test_read_device(struct device *dev)
@@ -14,14 +15,14 @@ static uint8_t test_read_device(struct device *dev)
     memset(out, 0, sizeof(out));
     out[512] = 'c';
 
-    strcpy(out, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab");
+    strcpy((char *) out, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab");
 
     device_random_read(dev, 3, &size, out);
 
     //printf("out: %x\n", out);
     //printf("DATA: %s\n", out);
 
-    if (strcmp(out, "JOUR") != 0) {
+    if (strcmp((char *) out, "JOUR") != 0) {
         return 0;
     }
 
