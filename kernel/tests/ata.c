@@ -1,3 +1,9 @@
+/*******************************************************************************
+ * SOURCE NAME  : tests/ata.c
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Tests for the ata module
+ ******************************************************************************/
+
 #include <stdint.h>
 #include <kernel/device/device.h>
 

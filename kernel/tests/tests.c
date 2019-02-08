@@ -1,3 +1,9 @@
+/*******************************************************************************
+ * SOURCE NAME  : tests/tests.c
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Common tests functions
+ ******************************************************************************/
+
 #include <kernel/tests.h>
 #include <stdio.h>
 

@@ -1,3 +1,9 @@
+/*******************************************************************************
+ * SOURCE NAME  : tests/paging.c
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Tests for the paging module
+ ******************************************************************************/
+
 #include <kernel/memory/paging.h>
 
 void test_paging()

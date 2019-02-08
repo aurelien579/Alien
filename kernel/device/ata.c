@@ -67,8 +67,8 @@ struct ata_device
     uint32_t pos;
 };
 
-
 static struct ata_device ata_devices[4];
+
 
 
 /*******************************************************************************

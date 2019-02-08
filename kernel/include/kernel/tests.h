@@ -1,3 +1,9 @@
+/*******************************************************************************
+ * SOURCE NAME  : tests.h
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Provide test helper functions
+ ******************************************************************************/
+
 #ifndef TEST_H
 #define TEST_H
 

@@ -1,3 +1,9 @@
+/*******************************************************************************
+ * SOURCE NAME  : math.h
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Provide math functions and macros
+ ******************************************************************************/
+
 #ifndef MATH_H
 #define MATH_H
 
