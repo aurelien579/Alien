@@ -10,7 +10,8 @@ SOURCES		= $(wildcard boot/*.c) \
 			  $(wildcard memory/*.asm) \
 			  $(wildcard kernel/*.c) \
 			  $(wildcard device/*.c) \
-			  $(wildcard tests/*.c)
+			  $(wildcard tests/*.c) \
+			  $(wildcard fs/*.c)
 
 OBJECTS		= $(patsubst %.c, %.o, $(patsubst %.asm, %.o, $(SOURCES)))
 

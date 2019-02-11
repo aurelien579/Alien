@@ -13,6 +13,7 @@
 #include <kernel/cpu/idt.h>
 #include <kernel/memory/paging.h>
 #include <kernel/kernel.h>
+#include <kernel/device/device.h>
 #include <kernel/device/ata.h>
 #include <kernel/tests.h>
 
@@ -33,5 +34,7 @@ void kernel_main(struct mb_info *boot_info)
     
     ata_install();
     
-    test_all();
+    ext4_init(device_find("ATA-3"));
+
+   // test_all();
 }
