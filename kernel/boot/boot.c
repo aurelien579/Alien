@@ -12,6 +12,7 @@
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
 #include <kernel/memory/paging.h>
+#include <kernel/memory/heap.h>
 #include <kernel/kernel.h>
 #include <kernel/device/ata.h>
 #include <kernel/tests.h>
@@ -31,6 +32,8 @@ void kernel_main(struct mb_info *boot_info)
     idt_install();
     paging_install(KERNEL.memlen, KERNEL_END);
     
+    heap_install();
+
     ata_install();
     
     test_all();
