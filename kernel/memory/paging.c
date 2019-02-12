@@ -238,6 +238,20 @@ uint32_t alloc_kpage()
     return alloc_page(KERNEL_VBASE, 0);
 }
 
+uint32_t alloc_continuous_pages(uint32_t n)
+{
+    if (n == 0) {
+        return 0;
+    }
+
+    uint32_t page = alloc_kpage();
+    for (uint32_t i = 0; i < n - 1; i++) {
+        alloc_kpage();
+    }
+
+    return page;
+}
+
 void free_page(uint32_t page)
 {
     free_frame(phys_addr(page));

@@ -32,8 +32,24 @@ void kernel_main(struct mb_info *boot_info)
     gdt_install();
     idt_install();
     paging_install(KERNEL.memlen, KERNEL_END);
-    
+
     heap_install();
+
+    /*void *ptr = kmalloc(PAGE_SIZE);
+    printf("ptr: 0x%x\n", ptr);
+
+    uint32_t page = alloc_kpage();
+    printf("page: 0x%x\n", page);
+
+    *((uint64_t *) ptr) = 0x6482;
+
+    ptr = kmalloc(PAGE_SIZE * 10);
+    printf("ptr: 0x%x\n", ptr);
+    *((uint64_t *) ptr) = 0x6482;
+    memset(ptr, 0x6482, 10 * PAGE_SIZE);
+
+
+    printf("success!\n");*/
 
     ata_install();
     

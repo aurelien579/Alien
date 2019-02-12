@@ -20,7 +20,7 @@ LFLAGS		=
 ASM			= nasm
 ASMFLAGS	= -f elf32
 CC			= i686-elf-gcc
-CFLAGS		= -ffreestanding -Wall -Wextra $(INCLUDES)
+CFLAGS		= -ffreestanding -Wall -Wextra $(INCLUDES) -O1
 TARGET		= kernel.bin
 
 all: $(TARGET)

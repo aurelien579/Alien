@@ -1,106 +1,184 @@
 #include <kernel/memory/heap.h>
 #include <kernel/memory/paging.h>
 
+#include <math.h>
 #include <stdio.h>
 
-struct header
+
+typedef struct heap_block
 {
-    uint8_t used;
-    uint32_t size;
-} __attribute__((packed));
+    uint8_t             used;
+    uint32_t            size;
+    struct heap_block  *next;
+} __attribute__((packed)) heap_block_t;
 
-struct heap
+typedef struct heap
 {
-    uint32_t size;
-    struct header *head;
-};
+    heap_block_t   *head;
+    uint32_t        size;
+} heap_t;
 
-struct heap heap = {
-    .size = 0,
-    .head = (struct header *) 0
-};
-
-static inline uint32_t
-first_byte_after_heap()
-{
-    return ((uint32_t) heap.head) + heap.size;
-}
-
-static inline uint8_t
-has_next(struct header *h)
-{
-    uint32_t byte_after = ((uint32_t) h) + h->size;
-    if (byte_after >= first_byte_after_heap()) {
-        return 0;
-    }
-
-    if (first_byte_after_heap() - byte_after <= sizeof(struct header)) {
-        return 0;
-    }
-
-    return 1;
-}
-
-static inline struct header *
-next(struct header *h)
-{
-    return (struct header *) (((uint8_t *) h) + h->size);
-}
+static heap_t heap;
 
 static inline void *
-data(struct header *h)
+block_get_base(heap_block_t *block)
 {
-    return (void *) (((uint32_t) h) + sizeof(struct header));
+    return  (void *) (((uint32_t) block) + sizeof(heap_block_t));
 }
 
-static inline struct header *
-header_from_data(void *data)
+static inline heap_block_t *
+heap_get_last()
 {
-    if ((uint32_t) data <= sizeof(struct header)) {
-        return (struct header *) 0;
+    heap_block_t *current = heap.head;
+
+    while (current->next) {
+        current = current->next;
     }
 
-    return (struct header *) (((uint32_t) data) - sizeof(struct header));
+    return current;
 }
 
-static struct header *
-find_first_free(uint32_t size)
+/**
+ * DESCRIPTION: Find a free block from the heap
+ * IN: 
+ *      - size: size of the memory block to allocate
+ *      - heap (global): coherent heap structure
+ * OUT:
+ *      - ret: free block found
+ */
+static heap_block_t *
+heap_find_free(uint32_t size)
 {
-    struct header *header = heap.head;
+    heap_block_t *current = heap.head;
 
-    while (header->used || header->size < size) {
-        if (!has_next(header)) {
-            return (struct header *) 0;
+    while (current) {
+        if (!current->used && current->size >= size) {
+            return current;
         }
 
-        header = next(header);
+        current = current->next;
     }
 
-    return header;
+    return (heap_block_t *) 0;
 }
 
-static inline void
-resize(struct header *h, uint32_t size)
+/**
+ * DESCRIPTION: Mark a new block of memory as used and make the heap coherent
+ * IN: 
+ *      - size: size of the memory block to allocate
+ *      - block: a free block of memory from the heap
+ *      - heap (global): coherent heap structure
+ * OUT:
+ *      - ret: memory address of the block's base
+ * MODIFY:
+ *      - heap (global): stays coherent
+ */
+static void *
+heap_allocate_block(heap_block_t *block, uint32_t size)
 {
-    if (h->size <= size) {
-        return;
+    block->used = 1;
+
+    /* If avaiable memory inside block is bigger than the size of a new block.
+       If there is enough space to put another block after this one. */
+    if (block->size > size + sizeof(heap_block_t)) {
+        uint32_t free_size = block->size - size - sizeof(heap_block_t);
+
+        block->size = size;
+
+        /* Insert new block */
+        heap_block_t *new_block = (((uint32_t) block_get_base(block)) + size);
+        new_block->used = 0;
+        new_block->size = free_size;
+        new_block->next = block->next;
+        block->next = new_block;
     }
 
-    uint32_t old_size = h->size;
-    h->size = size;
+    return block_get_base(block);
+}
 
-    if (has_next(h)) {
-        struct header *new = next(h);
-        new->size = old_size - size - sizeof(struct header);
-        new->used = 0;
+/**
+ * DESCRIPTION: Expand the heap so that it can contains 'size' available memory
+ * IN: 
+ *      - size: size of the memory block to allocate
+ *      - heap (global): coherent heap structure with 'free_size < size'
+ * OUT:
+ *      - ret: memory address of the block or null if an error occured
+ * MODIFY:
+ *      - heap (global): coherent with 'free_size >= size'
+ */
+static void
+heap_expand(uint32_t size)
+{
+    heap_block_t *last = heap_get_last();
+    uint32_t required_size = 0;
 
-        printf("New header size: 0x%x\n", new->size);
+    /* Calculate the number of bytes to add. */
+    if (last->used) {
+        required_size = size;
     } else {
-        h->size = old_size;
+        if (last->size >= size) {
+            /* No need to expand. */
+            return;
+        }
+
+        required_size = size - last->size;
+    }
+
+    /* We add sizeof(heap_block_t) in case we need to add a block */
+    uint32_t required_pages = ((size + sizeof(heap_block_t)) / PAGE_SIZE) + 1;
+
+    uint32_t byte_after_last = ((uint32_t) block_get_base(last)) + last->size;    
+    uint32_t page = alloc_continuous_pages(required_pages);
+
+    if (page == byte_after_last) {
+        /* Continous area */
+        last->size += required_pages * PAGE_SIZE;
+    } else {
+        heap_block_t *new_block = (heap_block_t *) page;
+        new_block->used = 0;
+        new_block->next = 0;
+        new_block->size = (required_pages * PAGE_SIZE) - sizeof(heap_block_t);
+        last->next = new_block;
+        last = new_block;
     }
 }
 
-void heap_install()
+/**
+ * DESCRIPTION: Allocate a new block of memory of size 'size'
+ * IN: 
+ *      - size: size of the memory block to allocate
+ *      - heap (global): coherent heap structure
+ * OUT:
+ *      - ret: memory address of the block or null if an error occured
+ * MODIFY:
+ *      - heap (global): stays coherent
+ */
+void *
+kmalloc(uint32_t size)
+{
+    heap_block_t *block = heap_find_free(size);
+
+    printf("[HEAP] kmalloc(%d)\n", size);
+
+    if (block == 0) {
+        heap_expand(size);
+
+        printf("[HEAP] Expanded\n");
+
+        block = heap_find_free(size);
+
+        printf("[HEAP] New free: 0x%x, size: %d, next: 0x%x, used: %d\n", block, block->size, block->next, block->used);
+        if (block == 0) {
+            /* Expansion didn't worked */
+            return (void *) 0;
+        }
+    }
+
+    return heap_allocate_block(block, size);
+}
+
+void
+heap_install()
 {
     uint32_t page = alloc_kpage();
     if (page == 0) {
@@ -109,39 +187,11 @@ void heap_install()
     }
 
     heap.size = PAGE_SIZE;
-    heap.head = (struct header *) page;
+    heap.head = (heap_block_t *) page;
     
     heap.head->used = 0;
-    heap.head->size = PAGE_SIZE;
+    heap.head->next = 0;
+    heap.head->size = PAGE_SIZE - sizeof(heap_block_t);
 
-    printf("0x%x\n", find_first_free(PAGE_SIZE));
-}
-
-void *kmalloc(uint32_t size)
-{
-    if (size == 0) {
-        return (void *) 0;
-    }
-
-    struct header *h = find_first_free(size);
-    if (h->size > size) {
-        resize(h, size);
-    }
-
-    h->used = 1;
-    return data(h);
-}
-
-void kfree(void *ptr)
-{
-    if ((uint32_t) ptr == 0) {
-        return;
-    }
-
-    struct header *h = header_from_data(ptr);
-    if (h == (struct header *) 0) {
-        return;
-    }
-
-    h->used = 0;
+    printf("0x%x\n", heap_find_free(PAGE_SIZE - sizeof(heap_block_t)));
 }

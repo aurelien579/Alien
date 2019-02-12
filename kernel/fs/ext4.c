@@ -75,6 +75,14 @@ struct inode
     uint16_t _[5];
 } __attribute__((packed));
 
+struct dirent
+{
+    uint32_t inode;
+    uint16_t size;
+    uint16_t name_length;
+} __attribute__((packed));
+
+
 static inline uint32_t
 get_block_size(const struct superblock *sb)
 {
@@ -121,7 +129,31 @@ find_inode(struct device *dev, const struct superblock *sb, uint32_t inode_id)
     return inodes[index];
 }
 
-void ext4_init(struct device *dev)
+static int64_t
+inode_read(struct device *dev, struct inode *inode, uint8_t *out, uint32_t size)
+{
+    int64_t size_to_read = min(inode->size_low, size);
+    uint32_t sector = 0;
+
+    printf("reading: %d\n", size_to_read);
+
+    while (size_to_read > 0) {
+        int64_t sector_size_to_read = min(size_to_read, 1024);
+        printf("sector %x\n", inode->block[sector]);
+
+        if (device_random_read(dev, inode->block[sector] * 1024, &sector_size_to_read, out) == ERROR) {
+            return -1;
+        }
+
+        size_to_read -= sector_size_to_read;
+        sector++;
+    }
+
+    return 0;
+}
+
+void
+ext4_init(struct device *dev)
 {
     struct superblock sb;
     uint32_t size = sizeof(struct superblock);
@@ -156,4 +188,21 @@ void ext4_init(struct device *dev)
     printf("[EXT4] first_non_reserved_inode=%d\n", sb.first_non_reserved_inode);
     struct inode root_inode = find_inode(dev, &sb, 2);
     printf("[EXT4] root_inode=%d\n", root_inode.mode);
+
+    uint8_t buffer[512];
+
+    inode_read(dev, &root_inode, buffer, sizeof(buffer));
+    
+    struct dirent *ent;
+    ent = buffer;
+
+    for (int i = 0; i < 10; i++) {
+        char *name = (((uint32_t) ent) + sizeof(struct dirent));
+        printf("entry { %d, %d, %d, %s }\n", ent->inode, ent->size, ent->name_length, name);
+        ent = (((uint32_t) ent) + ent->size); 
+    }
+    
+    for (uint32_t i = 0; i < 512; i++) {
+        printf("%x", buffer[i]);
+    }
 }
