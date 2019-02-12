@@ -23,7 +23,13 @@ static heap_t heap;
 static inline void *
 block_get_base(heap_block_t *block)
 {
-    return  (void *) (((uint32_t) block) + sizeof(heap_block_t));
+    return (void *) (((uint32_t) block) + sizeof(heap_block_t));
+}
+
+static inline heap_block_t *
+block_from_base(void *base)
+{
+    return (heap_block_t *) (((uint32_t) base) - sizeof(heap_block_t));
 }
 
 static inline heap_block_t *
@@ -175,6 +181,27 @@ kmalloc(uint32_t size)
     }
 
     return heap_allocate_block(block, size);
+}
+
+void
+kfree(void *ptr)
+{
+    if (!ptr) {
+        return;
+    }
+
+    heap_block_t *block = block_from_base(ptr);
+    
+    block->used = 0;
+
+    /* Merge with next block if present and not used */
+    heap_block_t *next = block->next;
+    if (next) {
+        if (!next->used) {
+            block->size += next->size + sizeof(heap_block_t);
+            block->next = next->next;
+        }
+    }
 }
 
 void
