@@ -162,9 +162,9 @@ heap_expand(uint32_t size)
 void *
 kmalloc(uint32_t size)
 {
+    //printf("[HEAP] kmalloc(%d)\n", size);
     heap_block_t *block = heap_find_free(size);
 
-    printf("[HEAP] kmalloc(%d)\n", size);
 
     if (block == 0) {
         heap_expand(size);
