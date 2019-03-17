@@ -35,6 +35,8 @@ void test_all()
     };
 
     run_test(&ctx, test_ata_read, "test_ata_read");
+    run_test(&ctx, test_heap, "test_heap");
+    run_test(&ctx, test_string, "test_string");
     run_test(&ctx, test_paging, "test_paging");
 
     printf("[TEST] %d/%d success\n", ctx.success, ctx.total);

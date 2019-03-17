@@ -11,5 +11,8 @@ void test_all();
 
 int test_ata_read();
 int test_paging();
+int test_heap();
+int test_string();
+
 
 #endif
