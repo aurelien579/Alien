@@ -10,6 +10,12 @@
 #ifndef LIB_STRING_H
 #define LIB_STRING_H
 
+struct strarray
+{
+    unsigned int size;
+    char *array[];
+};
+
 char *strcat(char *dest, const char *src);
 char *strncat(char *dest, const char *str, unsigned int n);
 
@@ -26,5 +32,9 @@ void *memset(void *s, int c, unsigned int n);
 void *memsetw(void *s, int c, unsigned int n);
 
 char* itoa(int value, char* result, int base);
+
+struct strarray *strsplit(const char *str, char c);
+struct strarray *strarray_new(unsigned int size);
+void strarray_free(struct strarray *a);
 
 #endif
