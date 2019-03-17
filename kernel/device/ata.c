@@ -38,6 +38,7 @@
 #define ATA_CMD_IDENTIFY        0xEC
 #define ATA_CMD_PACKET_IDENTIFY 0xA1
 
+//#define ATA_LOG 1
 
 
 /*******************************************************************************
@@ -421,6 +422,10 @@ static result_t ata_read(struct device *device,
     uint32_t size_read = 0;
     uint8_t buffer[512];
     struct ata_device *ata_dev = ATA_DEV(device);
+
+#ifdef ATA_LOG
+    printf("[ATA] ata_read size: 0x%x\n", *size);
+#endif
 
     while (size_read < *size) {
         /* Next sector to read */

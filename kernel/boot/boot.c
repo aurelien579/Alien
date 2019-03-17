@@ -17,6 +17,7 @@
 #include <kernel/device/device.h>
 #include <kernel/device/ata.h>
 #include <kernel/tests.h>
+#include <kernel/fs/vfs.h>
 
 #include "multiboot.h"
 
@@ -53,7 +54,21 @@ void kernel_main(struct mb_info *boot_info)
 
     ata_install();
     
-    ext4_init(device_find("ATA-3"));
+    struct device *dev = device_find("ATA-3");
 
-   // test_all();
+    vfs_init(dev);
+    ext4_mount(dev, &vfs_root.node);
+
+    struct vdir *dir = vdir_open("/toto");
+    if (dir == 0) {
+        printf("File not found\n");
+    } else {
+        struct vnode_list *cur = dir->list;
+        while (cur->next) {
+            printf("%s\n", cur->node.name);
+            cur = cur->next;
+        }
+    }
+
+    //test_all();
 }

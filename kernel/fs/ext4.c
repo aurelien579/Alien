@@ -1,7 +1,10 @@
 #include <kernel/fs/ext4.h>
 
+#include <kernel/fs/vfs.h>
+#include <kernel/memory/heap.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <math.h>
 
@@ -79,7 +82,8 @@ struct dirent
 {
     uint32_t inode;
     uint16_t size;
-    uint16_t name_length;
+    uint8_t name_length_lo;
+    uint8_t name_length_hi;
 } __attribute__((packed));
 
 
@@ -120,12 +124,11 @@ find_inode(struct device *dev, const struct superblock *sb, uint32_t inode_id)
 
     uint32_t table = infos[group].inode_table;
 
-    printf("index: %d\n", index);
-
-    struct inode inodes[4096];
+    struct inode inodes[32];
     uint32_t size = min(sb->inodes_per_group * sb->inode_size, sizeof(inodes));
-    device_random_read(dev, table * 1024, &size, (uint8_t *) inodes);
     
+    device_random_read(dev, table * 1024, &size, (uint8_t *) inodes);
+
     return inodes[index];
 }
 
@@ -140,7 +143,7 @@ inode_read(struct device *dev, struct inode *inode, uint8_t *out, uint32_t size)
     while (size_to_read > 0) {
         int64_t sector_size_to_read = min(size_to_read, 1024);
         printf("sector %x\n", inode->block[sector]);
-
+        
         if (device_random_read(dev, inode->block[sector] * 1024, &sector_size_to_read, out) == ERROR) {
             return -1;
         }
@@ -152,29 +155,87 @@ inode_read(struct device *dev, struct inode *inode, uint8_t *out, uint32_t size)
     return 0;
 }
 
-void
-ext4_init(struct device *dev)
+static struct vdir *
+ext4_open_dir(struct vnode *node)
 {
-    struct superblock sb;
-    uint32_t size = sizeof(struct superblock);
-    device_random_read(dev, 1024, &size, (uint8_t *) &sb);
+    printf("ext4_open_dir\n");
 
-    if (sb.magic != EXT4_MAGIC) {
-        printf("[EXT4] Invalid magic number: 0x%x\n", sb.magic);
+    struct vdir *dir = kmalloc(sizeof(struct vdir));
+    dir->node = node;
+
+    struct superblock *sb = node->dev->fs_private;
+
+    struct inode *inode = (struct inode *) node->private;
+    uint32_t inode_size = inode->size_low;
+
+    uint8_t *buffer = kmalloc(inode_size);
+        
+    inode_read(node->dev, inode, buffer, inode_size);
+
+    dir->list = kmalloc(sizeof(struct vnode_list));
+    struct vnode_list *list_cur = dir->list;
+    list_cur->next = 0;
+
+    struct dirent *ent;
+    ent = buffer;
+
+    while (((uint32_t) ent) + ent->size <= (uint32_t) buffer + inode_size) {
+        if (ent->inode == 0) {
+            continue;
+        }
+
+        struct vnode *cur = &list_cur->node;
+
+        /* Read name */
+        char *name = (((uint32_t) ent) + sizeof(struct dirent));
+        int size = min(VFS_NAME_MAX, ent->name_length_lo);
+        strncpy(cur->name, name, size);
+
+        /* Copy common data from parent node */
+        cur->open_dir = node->open_dir;
+        cur->dev = node->dev;
+
+        /* Fetch inode */
+        struct inode *cur_inode = kmalloc(sizeof(struct inode));
+        *cur_inode = find_inode(node->dev, sb, ent->inode);
+
+        cur->private = cur_inode;
+
+        struct vnode_list *next = kmalloc(sizeof(struct vnode_list));
+        next->next = 0;
+        list_cur->next = next;
+        list_cur = next;
+
+        ent = (((uint32_t) ent) + ent->size); 
+    }
+
+    return dir;
+}
+
+static result_t
+ext4_init(struct device *dev, struct inode *root)
+{
+    struct superblock *sb = kmalloc(sizeof(struct superblock));
+    
+    uint32_t size = sizeof(struct superblock);
+    device_random_read(dev, 1024, &size, sb);
+
+    if (sb->magic != EXT4_MAGIC) {
+        printf("[EXT4] Invalid magic number: 0x%x\n", sb->magic);
         return;
     }
 
-    uint32_t blocksize = 1024 << sb.log_block_size;
+    uint32_t blocksize = 1024 << sb->log_block_size;
     printf("[EXT4] blocksize=%d\n", blocksize);
-    printf("[EXT4] inodes_count=%d\n", sb.inodes_count);
-    printf("[EXT4] blocks_count=%d\n", sb.blocks_count);
-    printf("[EXT4] blocks_per_group=%d\n", sb.blocks_per_group);
-    if (updiv(sb.blocks_count, sb.blocks_per_group) != updiv(sb.inodes_count, sb.inodes_per_group)) {
+    printf("[EXT4] inodes_count=%d\n", sb->inodes_count);
+    printf("[EXT4] blocks_count=%d\n", sb->blocks_count);
+    printf("[EXT4] blocks_per_group=%d\n", sb->blocks_per_group);
+    if (updiv(sb->blocks_count, sb->blocks_per_group) != updiv(sb->inodes_count, sb->inodes_per_group)) {
         printf("[EXT4] Inconsistent block group count\n");
         return;
     }
 
-    uint32_t groups_count = updiv(sb.blocks_count, sb.blocks_per_group);
+    uint32_t groups_count = updiv(sb->blocks_count, sb->blocks_per_group);
     printf("[EXT4] groups_count=%d\n", groups_count);
 
     struct groupinfo groupinfos[1024/32] __attribute__((packed));
@@ -185,8 +246,8 @@ ext4_init(struct device *dev)
         printf("[EXT4] block_bitmap_addr=%d\n", groupinfos[i].block_bitmap_addr);
     }*/
 
-    printf("[EXT4] first_non_reserved_inode=%d\n", sb.first_non_reserved_inode);
-    struct inode root_inode = find_inode(dev, &sb, 2);
+    printf("[EXT4] first_non_reserved_inode=%d\n", sb->first_non_reserved_inode);
+    struct inode root_inode = find_inode(dev, sb, 2);
     printf("[EXT4] root_inode=%d\n", root_inode.mode);
 
     uint8_t buffer[512];
@@ -196,7 +257,10 @@ ext4_init(struct device *dev)
     struct dirent *ent;
     ent = buffer;
 
-    for (int i = 0; i < 10; i++) {
+    *root = root_inode;
+    dev->fs_private = sb;
+
+    /*for (int i = 0; i < 10; i++) {
         char *name = (((uint32_t) ent) + sizeof(struct dirent));
         printf("entry { %d, %d, %d, %s }\n", ent->inode, ent->size, ent->name_length, name);
         ent = (((uint32_t) ent) + ent->size); 
@@ -204,5 +268,28 @@ ext4_init(struct device *dev)
     
     for (uint32_t i = 0; i < 512; i++) {
         printf("%x", buffer[i]);
+    }*/
+
+
+    return OK;
+}
+
+result_t
+ext4_mount(struct device *dev, struct vnode *node)
+{
+    printf("[EXT4] Mount\n");
+
+    struct inode *root_inode = kmalloc(sizeof(struct inode));
+    printf("inode: 0x%x\n", root_inode);
+    result_t res;
+
+    if ((res = ext4_init(dev, root_inode)) != OK) {
+        kfree(root_inode);
+        return res;
     }
+
+    node->private = root_inode;
+    node->open_dir = ext4_open_dir;
+
+    return OK;
 }

@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 #ifndef DEVICE_DEVICE_H
-#define DEVIce_DEVICE_H
+#define DEVICE_DEVICE_H
 
 #include <stdint.h>
 
@@ -30,6 +30,7 @@ struct device
     enum device_type type;
     char name[DEVICE_NAME_MAX];
     void *p;
+    void *fs_private;
     
     result_t (*read)    (struct device *, uint32_t *, uint8_t *);
     result_t (*write)   (struct device *, uint32_t *, uint8_t *);

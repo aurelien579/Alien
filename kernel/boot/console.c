@@ -6,6 +6,7 @@
 
 #include <kernel/io.h>
 #include <stdint.h>
+#include <string.h>
 
 #define COLOR 0x0F
 
@@ -39,6 +40,11 @@ static void update_cursor()
     vga_write(' ', 0x07);
 }
 
+static void boot_scroll()
+{
+    memcpy(vgamem, vgamem + 80, 24 * 80 * sizeof(uint16_t));
+    memset(vgamem + (24 * 80), 0, 80 * sizeof(uint16_t));
+}
 
 /*******************************************************************************
  *                          PUBLIC FUNCTIONS
@@ -55,7 +61,12 @@ void boot_clear()
 }
 
 void boot_putchar(char c)
-{    
+{
+    if (y >= 25) {
+        boot_scroll();
+        y = 24;
+    }
+
     if (c == '\n') {
         x = 0;
         y++;
@@ -66,7 +77,7 @@ void boot_putchar(char c)
 
     if (x >= 80) {
         x = 0;
-        y++;
+        y++;        
     }
     
     update_cursor();

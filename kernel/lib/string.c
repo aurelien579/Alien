@@ -36,9 +36,11 @@ char *strncpy(char *dest, const char* src, unsigned int n)
     char *ret = dest;
     
     while (n--) {
-        if (!*src) return ret;
+        if (!*src) break;
         *dest++ = *src++;
     }
+
+    *dest = 0;
     
     return ret;
 }
