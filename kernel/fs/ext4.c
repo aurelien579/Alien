@@ -39,8 +39,11 @@ struct superblock
     uint16_t reserved_blocks_gid;
     uint32_t first_non_reserved_inode;
     uint16_t inode_size;
+    uint16_t sb_block_group;
+    uint32_t opt_features;
+    uint32_t req_features;
 
-    uint32_t reserved[233];
+    uint8_t reserved[922];
 } __attribute__((packed));
 
 struct groupinfo
@@ -222,7 +225,17 @@ ext4_init(struct device *dev, struct inode *root)
 
     if (sb->magic != EXT4_MAGIC) {
         printf("[EXT4] Invalid magic number: 0x%x\n", sb->magic);
-        return;
+        return ERROR;
+    }
+
+    /* 
+        REALLY REALLY REALLY basic feature detection :
+        ext2 have feature 'Directory entries record the file type' which is 0x02
+        Other features are not supported
+    */
+    if (sb->req_features != 0x02) {
+        printf("[EXT4] Unsupported features: 0x%x\n", sb->req_features);
+        return ERROR;
     }
 
     uint32_t blocksize = 1024 << sb->log_block_size;
@@ -232,7 +245,7 @@ ext4_init(struct device *dev, struct inode *root)
     printf("[EXT4] blocks_per_group=%d\n", sb->blocks_per_group);
     if (updiv(sb->blocks_count, sb->blocks_per_group) != updiv(sb->inodes_count, sb->inodes_per_group)) {
         printf("[EXT4] Inconsistent block group count\n");
-        return;
+        return ERROR;
     }
 
     uint32_t groups_count = updiv(sb->blocks_count, sb->blocks_per_group);

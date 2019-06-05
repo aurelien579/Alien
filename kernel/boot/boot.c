@@ -33,31 +33,23 @@ void kernel_main(struct mb_info *boot_info)
     gdt_install();
     idt_install();
     paging_install(KERNEL.memlen, KERNEL_END);
-
     heap_install();
-
-    /*void *ptr = kmalloc(PAGE_SIZE);
-    printf("ptr: 0x%x\n", ptr);
-
-    uint32_t page = alloc_kpage();
-    printf("page: 0x%x\n", page);
-
-    *((uint64_t *) ptr) = 0x6482;
-
-    ptr = kmalloc(PAGE_SIZE * 10);
-    printf("ptr: 0x%x\n", ptr);
-    *((uint64_t *) ptr) = 0x6482;
-    memset(ptr, 0x6482, 10 * PAGE_SIZE);
-
-
-    printf("success!\n");*/
-
     ata_install();
     
     struct device *dev = device_find("ATA-3");
 
+    if (!dev) {
+        printf("ATA-3 Not found\n");
+        return;
+    }
+
     vfs_init(dev);
-    ext4_mount(dev, &vfs_root.node);
+    if (ext4_mount(dev, &vfs_root.node) != 1) {
+        printf("Can't mount ext driver !\n");
+        return;
+    }
+
+    printf("vfs_root: 0x%x\n", &vfs_root);
 
     struct vdir *dir = vdir_open("/toto");
     if (dir == 0) {

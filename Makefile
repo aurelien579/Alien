@@ -10,6 +10,7 @@ $(ISO_FILE): kernel/kernel.bin
 	@sudo grub-mkrescue iso -o $(ISO_FILE) -d /usr/lib/grub/i386-pc
 
 run: $(ISO_FILE)
+	@rm -f *.lock
 	@mkdir -p log
 	@bochs -f config/bochs.cfg -q
 	
