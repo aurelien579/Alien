@@ -18,6 +18,7 @@
 #include <kernel/device/ata.h>
 #include <kernel/tests.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/ext4.h>
 
 #include "multiboot.h"
 

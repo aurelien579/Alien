@@ -92,7 +92,7 @@ heap_allocate_block(heap_block_t *block, uint32_t size)
         block->size = size;
 
         /* Insert new block */
-        heap_block_t *new_block = (((uint32_t) block_get_base(block)) + size);
+        heap_block_t *new_block = (heap_block_t *) (((uint32_t) block_get_base(block)) + size);
         new_block->used = 0;
         new_block->size = free_size;
         new_block->next = block->next;
@@ -131,7 +131,7 @@ heap_expand(uint32_t size)
     }
 
     /* We add sizeof(heap_block_t) in case we need to add a block */
-    uint32_t required_pages = ((size + sizeof(heap_block_t)) / PAGE_SIZE) + 1;
+    uint32_t required_pages = ((required_size + sizeof(heap_block_t)) / PAGE_SIZE) + 1;
 
     uint32_t byte_after_last = ((uint32_t) block_get_base(last)) + last->size;    
     uint32_t page = alloc_continuous_pages(required_pages);

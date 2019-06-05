@@ -146,13 +146,14 @@ ata_pio_read16(struct ata_device *d)
     return inw(d->base_port + ATA_DATA_PORT);
 }
 
+/*
 static void
 ata_log_device(struct ata_device *d)
 {
     printf("{ base: 0x%x, control: 0x%x, slave: %d }\n",
            d->base_port, d->control_port, d->slave_bit);
 }
-
+*/
 
 
 /*
@@ -462,12 +463,14 @@ static result_t ata_read(struct device *device,
     return OK;
 }
 
+/*
 static result_t ata_write(struct device *device,
                           uint32_t *size,
                           uint8_t *out)
 {
     return ERROR;
 }
+*/
 
 static result_t ata_seek(struct device *device,
                          uint32_t pos)
@@ -487,7 +490,8 @@ ata_register_device(const char *name,
     dev.p = ata_dev;
 
     dev.read = ata_read;
-    dev.write = ata_write;
+    //dev.write = ata_write;
+    dev.write = 0;
     dev.seek = ata_seek;
 
     device_register(&dev);

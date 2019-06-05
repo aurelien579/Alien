@@ -4,7 +4,7 @@
 int test_heap()
 {
     void *p1, *p2, *p3;
-    uint32_t a, b, c;
+    uint32_t a, b;
 
     p1 = kmalloc(4000);
     if (!p1) {

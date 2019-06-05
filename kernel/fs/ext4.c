@@ -199,7 +199,6 @@ find_inode(struct device *dev, const struct superblock *sb, uint32_t inode_id)
 {
     uint32_t index = inode_get_index_in_group(sb, inode_id);
     uint32_t group = inode_get_group(sb, inode_id);
-    uint32_t block_size = get_block_size(sb);
 
     struct groupinfo infos[GROUP_INFOS_COUNT_PER_BLOCK];
     read_groupinfos(dev, infos);
@@ -214,6 +213,7 @@ find_inode(struct device *dev, const struct superblock *sb, uint32_t inode_id)
     return inodes[index];
 }
 
+// TODO: Change calling convention to be the same as device_random_read
 static int64_t
 inode_read(struct device *dev, struct inode *inode, uint8_t *out, uint32_t size)
 {
@@ -226,7 +226,7 @@ inode_read(struct device *dev, struct inode *inode, uint8_t *out, uint32_t size)
         int64_t sector_size_to_read = min(size_to_read, 1024);
         
         if (device_random_read(dev, inode->block[sector] * 1024,
-            &sector_size_to_read, out) == ERROR)
+            (uint32_t *) &sector_size_to_read, out) == ERROR)
         {
             ext4_error("inode_read - error while reading sector 0x%x\n",
                 inode->block[sector]);
@@ -264,7 +264,7 @@ ext4_open_dir(struct vnode *node)
     list_cur->next = 0;
 
     struct dirent *ent;
-    ent = buffer;
+    ent = (struct dirent *) buffer;
 
     while (((uint32_t) ent) + ent->size <= (uint32_t) buffer + inode_size) {
         if (ent->inode == 0) {
@@ -274,7 +274,7 @@ ext4_open_dir(struct vnode *node)
         struct vnode *cur = &list_cur->node;
 
         /* Read name */
-        char *name = (((uint32_t) ent) + sizeof(struct dirent));
+        char *name = (char *) (((uint32_t) ent) + sizeof(struct dirent));
         int size = min(VFS_NAME_MAX, ent->name_length_lo);
         strncpy(cur->name, name, size);
 
@@ -293,7 +293,7 @@ ext4_open_dir(struct vnode *node)
         list_cur->next = next;
         list_cur = next;
 
-        ent = (((uint32_t) ent) + ent->size); 
+        ent = (struct dirent *) (((uint32_t) ent) + ent->size); 
     }
 
     return dir;
@@ -311,7 +311,7 @@ ext4_init(struct device *dev, struct inode *root)
 
     /* Read the superblock */    
     uint32_t size = sizeof(struct superblock);
-    device_random_read(dev, 1024, &size, sb);
+    device_random_read(dev, 1024, &size, (uint8_t *) sb);
 
     /* Check magic number */
     if (sb->magic != EXT4_MAGIC) {
@@ -326,7 +326,6 @@ ext4_init(struct device *dev, struct inode *root)
     }
 
     /* Parse the superblock */
-    uint32_t blocksize = 1024 << sb->log_block_size;
     if (updiv(sb->blocks_count, sb->blocks_per_group) != updiv(sb->inodes_count, sb->inodes_per_group)) {
         ext4_error("Inconsistent block group count\n");
         return ERROR;

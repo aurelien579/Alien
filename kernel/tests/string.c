@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include <kernel/memory/paging.h>
 
 int test_strsplit(const char *str,
@@ -44,7 +45,7 @@ int test_string()
         4
     };
 
-    for (int i = 0; i < sizeof(count) / sizeof(int); i++) {
+    for (unsigned int i = 0; i < sizeof(count) / sizeof(int); i++) {
         if (!test_strsplit(strs[i], '/', expected[i], count[i])) {
             printf("[TEST] test_strsplit %d failed\n", i);
         }

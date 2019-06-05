@@ -51,8 +51,7 @@ vdir_open(const char *path)
     struct strarray *splitted = strsplit(path, '/');
     struct vdir *dir = vfs_root.node.open_dir(&vfs_root.node);
 
-    for (int i = 0; i < splitted->size; i++) {
-        printf("Looking for %s\n", splitted->array[i]);
+    for (unsigned int i = 0; i < splitted->size; i++) {
         struct vnode *node = vdir_find_node(dir, splitted->array[i]);
         if (node == 0) {
             return 0;
