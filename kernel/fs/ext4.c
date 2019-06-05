@@ -5,10 +5,13 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include <math.h>
 
 #define EXT4_MAGIC 0xEF53
+
+#define EXT4_BLOCK_SIZE 1024
 
 struct superblock
 {
@@ -57,6 +60,8 @@ struct groupinfo
     uint8_t  _[14];
 } __attribute__((packed));
 
+#define GROUP_INFOS_COUNT_PER_BLOCK (EXT4_BLOCK_SIZE / sizeof(struct groupinfo))
+
 struct inode
 {
     uint16_t mode;
@@ -90,6 +95,70 @@ struct dirent
 } __attribute__((packed));
 
 
+/*
+ * Incompatibily features. If one of these feature is present in sb.req_features
+ */
+
+/* Compression */
+#define INCOMPAT_COMPRESSION 0x1
+/* Directory entries record the file type */
+#define INCOMPAT_FILETYPE 0x2
+/* Filesystem needs recovery */
+#define INCOMPAT_RECOVER 0x4
+/* Filesystem has a separate journal device */
+#define INCOMPAT_JOURNAL_DEV 0x8
+/* Meta block groups */
+#define INCOMPAT_META_BG 0x10
+/* Files in this filesystem use extents */
+#define INCOMPAT_EXTENTS 0x40
+/* Enable a filesystem of 2^64 blocks */
+#define INCOMPAT_64BITS 0x80
+/* Multiple mount protection. Not implemented */
+#define INCOMPAT_MMP 0x100
+/* Flexible block groups */
+#define INCOMPAT_FLEX_BG 0x200
+/* Inodes can be used to store large extended attribute values */
+#define INCOMPAT_EA_INODE 0x400
+/* Data in directory entry. Not implemented ? */
+#define INCOMPAT_DIRDATA 0x1000
+/*
+ * metadata_csum filesystem while the filesystem is mounted; without it, the
+ * checksum definition requires all metadata blocks to be rewritten.
+ */
+#define INCOMPAT_CSUM_SEED 0x2000
+/* Large directory >2GB or 3^3 */
+#define INCOMPAT_LARGEDIR 0x4000
+/* Data in inode */
+#define INCOMPAT_INLINE_DATA 0x8000
+/* Encrypted inodes are present on the filesystem */
+#define INCOMPAT_ENCRYPT 0x10000
+
+#define INCOMPAT_SUPPORTED INCOMPAT_FILETYPE
+
+static void
+ext4_debug(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    
+    printf("[EXT4] [DEBUG] ");
+    vprintf(fmt, args);
+    
+    va_end(args);
+}
+
+static void
+ext4_error(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    
+    printf("[EXT4] [ERROR] ");
+    vprintf(fmt, args);
+    
+    va_end(args);
+}
+
 static inline uint32_t
 get_block_size(const struct superblock *sb)
 {
@@ -115,6 +184,16 @@ read_groupinfos(struct device *dev, struct groupinfo *infos)
     device_random_read(dev, 2048, &size, (uint8_t *) infos);
 }
 
+/**
+ * Very important function which find an inode on the disk from its index. The
+ * index is the global identifier of the inode. It is find in directory entries.
+ * 
+ * It first locate the correct block group,
+ *      then read group infos,
+ *      then locate the inode table from the group infos,
+ *      then read inode table and returns the correct entry.
+ * Returns the inode structure as value.
+ */
 static inline struct inode
 find_inode(struct device *dev, const struct superblock *sb, uint32_t inode_id)
 {
@@ -122,7 +201,7 @@ find_inode(struct device *dev, const struct superblock *sb, uint32_t inode_id)
     uint32_t group = inode_get_group(sb, inode_id);
     uint32_t block_size = get_block_size(sb);
 
-    struct groupinfo infos[1024/32];
+    struct groupinfo infos[GROUP_INFOS_COUNT_PER_BLOCK];
     read_groupinfos(dev, infos);
 
     uint32_t table = infos[group].inode_table;
@@ -141,13 +220,16 @@ inode_read(struct device *dev, struct inode *inode, uint8_t *out, uint32_t size)
     int64_t size_to_read = min(inode->size_low, size);
     uint32_t sector = 0;
 
-    printf("reading: %d\n", size_to_read);
+    ext4_debug("inode_read - uid %d, size_to_read %d\n", inode->uid, size_to_read);
 
     while (size_to_read > 0) {
         int64_t sector_size_to_read = min(size_to_read, 1024);
-        printf("sector %x\n", inode->block[sector]);
         
-        if (device_random_read(dev, inode->block[sector] * 1024, &sector_size_to_read, out) == ERROR) {
+        if (device_random_read(dev, inode->block[sector] * 1024,
+            &sector_size_to_read, out) == ERROR)
+        {
+            ext4_error("inode_read - error while reading sector 0x%x\n",
+                inode->block[sector]);
             return -1;
         }
 
@@ -161,7 +243,7 @@ inode_read(struct device *dev, struct inode *inode, uint8_t *out, uint32_t size)
 static struct vdir *
 ext4_open_dir(struct vnode *node)
 {
-    printf("ext4_open_dir\n");
+    ext4_debug("ext4_open_dir\n");
 
     struct vdir *dir = kmalloc(sizeof(struct vdir));
     dir->node = node;
@@ -173,7 +255,9 @@ ext4_open_dir(struct vnode *node)
 
     uint8_t *buffer = kmalloc(inode_size);
         
-    inode_read(node->dev, inode, buffer, inode_size);
+    if (inode_read(node->dev, inode, buffer, inode_size) < 0) {
+        return 0;
+    }
 
     dir->list = kmalloc(sizeof(struct vnode_list));
     struct vnode_list *list_cur = dir->list;
@@ -215,74 +299,44 @@ ext4_open_dir(struct vnode *node)
     return dir;
 }
 
+/**
+ * Initialize a ext4 device. Reads the superblock and search the root inode.
+ * dev: input device
+ * root: output root inode
+ */
 static result_t
 ext4_init(struct device *dev, struct inode *root)
 {
     struct superblock *sb = kmalloc(sizeof(struct superblock));
-    
+
+    /* Read the superblock */    
     uint32_t size = sizeof(struct superblock);
     device_random_read(dev, 1024, &size, sb);
 
+    /* Check magic number */
     if (sb->magic != EXT4_MAGIC) {
-        printf("[EXT4] Invalid magic number: 0x%x\n", sb->magic);
+        ext4_error("Invalid magic number: 0x%x\n", sb->magic);
         return ERROR;
     }
 
-    /* 
-        REALLY REALLY REALLY basic feature detection :
-        ext2 have feature 'Directory entries record the file type' which is 0x02
-        Other features are not supported
-    */
-    if (sb->req_features != 0x02) {
-        printf("[EXT4] Unsupported features: 0x%x\n", sb->req_features);
+    /* Check required features */
+    if (sb->req_features != INCOMPAT_SUPPORTED) {
+        ext4_error("Unsupported features: 0x%x\n", sb->req_features);
         return ERROR;
     }
 
+    /* Parse the superblock */
     uint32_t blocksize = 1024 << sb->log_block_size;
-    printf("[EXT4] blocksize=%d\n", blocksize);
-    printf("[EXT4] inodes_count=%d\n", sb->inodes_count);
-    printf("[EXT4] blocks_count=%d\n", sb->blocks_count);
-    printf("[EXT4] blocks_per_group=%d\n", sb->blocks_per_group);
     if (updiv(sb->blocks_count, sb->blocks_per_group) != updiv(sb->inodes_count, sb->inodes_per_group)) {
-        printf("[EXT4] Inconsistent block group count\n");
+        ext4_error("Inconsistent block group count\n");
         return ERROR;
     }
+  
+    /* Read root inode */
+    *root = find_inode(dev, sb, 2);
 
-    uint32_t groups_count = updiv(sb->blocks_count, sb->blocks_per_group);
-    printf("[EXT4] groups_count=%d\n", groups_count);
-
-    struct groupinfo groupinfos[1024/32] __attribute__((packed));
-    size = sizeof(groupinfos);
-    device_random_read(dev, 2048, &size, (uint8_t *) groupinfos);
-    
-    /*for (int i = 0; i < groups_count; i++) {
-        printf("[EXT4] block_bitmap_addr=%d\n", groupinfos[i].block_bitmap_addr);
-    }*/
-
-    printf("[EXT4] first_non_reserved_inode=%d\n", sb->first_non_reserved_inode);
-    struct inode root_inode = find_inode(dev, sb, 2);
-    printf("[EXT4] root_inode=%d\n", root_inode.mode);
-
-    uint8_t buffer[512];
-
-    inode_read(dev, &root_inode, buffer, sizeof(buffer));
-    
-    struct dirent *ent;
-    ent = buffer;
-
-    *root = root_inode;
+    /* Register the superblock in device structure */
     dev->fs_private = sb;
-
-    /*for (int i = 0; i < 10; i++) {
-        char *name = (((uint32_t) ent) + sizeof(struct dirent));
-        printf("entry { %d, %d, %d, %s }\n", ent->inode, ent->size, ent->name_length, name);
-        ent = (((uint32_t) ent) + ent->size); 
-    }
-    
-    for (uint32_t i = 0; i < 512; i++) {
-        printf("%x", buffer[i]);
-    }*/
-
 
     return OK;
 }
@@ -290,12 +344,11 @@ ext4_init(struct device *dev, struct inode *root)
 result_t
 ext4_mount(struct device *dev, struct vnode *node)
 {
-    printf("[EXT4] Mount\n");
+    ext4_debug("Mounting ext4 filesystem...\n");
 
     struct inode *root_inode = kmalloc(sizeof(struct inode));
-    printf("inode: 0x%x\n", root_inode);
+    
     result_t res;
-
     if ((res = ext4_init(dev, root_inode)) != OK) {
         kfree(root_inode);
         return res;

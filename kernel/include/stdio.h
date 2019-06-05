@@ -8,8 +8,13 @@
 #ifndef LIB_STDIO_H
 #define LIB_STDIO_H
 
+#include <stdarg.h>
+
 void putc(char str);
+
 int printf(const char *format, ...);
+int vprintf(const char *format, va_list args);
+
 int sprintf(char *out, const char *format, ...);
 
 #endif

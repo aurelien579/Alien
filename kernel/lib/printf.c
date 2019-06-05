@@ -179,6 +179,11 @@ int printf(const char *format, ...)
     return print(0, format, args);
 }
 
+int vprintf(const char *format, va_list args)
+{
+    return print(0, format, args);
+}
+
 int sprintf(char *out, const char *format, ...)
 {
     va_list args;
