@@ -7,7 +7,8 @@
 #include <kernel/cpu.h>
 #include <stdio.h>
 
-void dump_regs(const struct regs *r)
+void
+dump_regs(const struct regs *r)
 {
     printf("=== DUMP REGISTERS ===\n");
     printf("eax=0x%x, ebx=0x%x, ecx=0x%x, edx=0x%x\n",

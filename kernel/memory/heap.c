@@ -1,3 +1,9 @@
+/*******************************************************************************
+ * SOURCE NAME  : heap.c
+ * AUTHOR       : Aurélien Martin
+ * DESCRIPTION  : Provides kmalloc/kfree
+ ******************************************************************************/
+
 #include <kernel/memory/heap.h>
 #include <kernel/memory/paging.h>
 

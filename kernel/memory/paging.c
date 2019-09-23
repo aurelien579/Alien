@@ -34,55 +34,63 @@ static uint32_t kernel_tab[1024] __attribute__((aligned(PAGE_SIZE)));
  ******************************************************************************/
 
 __attribute__((always_inline))
-static inline void invlpg(uint32_t page)
+static inline void
+invlpg(uint32_t page)
 {
     asm volatile ("invlpg (%0)" :: "r" (page) : "memory");
 }
 
 __attribute__((always_inline))
-static inline void clear_entry(uint32_t *table, uint16_t i)
+static inline void
+clear_entry(uint32_t *table, uint16_t i)
 {
     table[i] = 0;
 }
 
 __attribute__((always_inline))
-static inline uint8_t entry_is_present(uint32_t *table, uint16_t i)
+static inline uint8_t
+entry_is_present(uint32_t *table, uint16_t i)
 {
     return table[i] & 1;
 }
 
 __attribute__((always_inline))
-static inline uint32_t *get_pagedir()
+static inline uint32_t *
+get_pagedir()
 {
     return (uint32_t *) 0xFFFFF000;
 }
 
 __attribute__((always_inline))
-static inline uint32_t *get_pagetable(uint32_t i)
+static inline uint32_t *
+get_pagetable(uint32_t i)
 {
     return (uint32_t *) ((1023 << 22) + (i << 12));
 }
 
 __attribute__((always_inline))
-static inline uint32_t get_pagedir_index(uint32_t page)
+static inline uint32_t
+get_pagedir_index(uint32_t page)
 {
     return (page & 0xFFC00000) >> 22;
 }
 
 __attribute__((always_inline))
-static inline uint32_t get_pagetab_index(uint32_t page)
+static inline uint32_t
+get_pagetab_index(uint32_t page)
 {
     return (page & 0x003FF000) >> 12;
 }
 
 __attribute__((always_inline))
-static inline uint32_t get_entry_frame(uint32_t entry)
+static inline uint32_t
+get_entry_frame(uint32_t entry)
 {
     return entry & 0xFFFFF000;
 }
 
-static void write_entry(uint32_t *table, uint16_t i, uint32_t frame,
-                        uint8_t is_user)
+static void
+write_entry(uint32_t *table, uint16_t i, uint32_t frame, uint8_t is_user)
 {
     table[i] = (frame & 0xFFFFF000);
     table[i] |= 1;
@@ -91,7 +99,8 @@ static void write_entry(uint32_t *table, uint16_t i, uint32_t frame,
 }
 
 __attribute__((always_inline))
-static inline uint8_t page_is_used(uint32_t page)
+static inline uint8_t
+page_is_used(uint32_t page)
 {
     uint32_t *dir = get_pagedir();
     uint32_t dir_idx = get_pagedir_index(page);
@@ -115,7 +124,8 @@ static inline uint8_t page_is_used(uint32_t page)
  * @return 0 if there is no more page free
  */
 __attribute__((always_inline))
-static inline uint32_t first_page_free(uint32_t after)
+static inline uint32_t
+first_page_free(uint32_t after)
 {
     for (uint32_t page = after; page <= LAST_PAGE; page += PAGE_SIZE) {
         if (!page_is_used(page)) return page;
@@ -125,7 +135,8 @@ static inline uint32_t first_page_free(uint32_t after)
     return 0;
 }
 
-static uint32_t alloc_frame()
+static uint32_t
+alloc_frame()
 {
     uint32_t i = 0;
     uint32_t j = 0;
@@ -148,7 +159,8 @@ static uint32_t alloc_frame()
     return (i * 8 + j) * PAGE_SIZE;
 }
 
-static void free_frame(uint32_t frame)
+static void
+free_frame(uint32_t frame)
 {
     uint32_t i = frame / (PAGE_SIZE * 8);
     uint32_t j = (frame / PAGE_SIZE) % 8;
@@ -156,7 +168,8 @@ static void free_frame(uint32_t frame)
     bitmap[i] &= ~(1 << j);
 }
 
-static uint8_t pagetable_is_empty(uint32_t *table)
+static uint8_t
+pagetable_is_empty(uint32_t *table)
 {
     for (uint32_t i = 0; i < 1024; i++) {
         if (entry_is_present(table, i)) {
@@ -173,7 +186,8 @@ static uint8_t pagetable_is_empty(uint32_t *table)
  *                          PUBLIC FUNCTIONS
  ******************************************************************************/
 
-uint32_t phys_addr(uint32_t page)
+uint32_t
+phys_addr(uint32_t page)
 {
     uint32_t *dir = get_pagedir();
     uint32_t dir_idx = get_pagedir_index(page);
@@ -186,7 +200,8 @@ uint32_t phys_addr(uint32_t page)
     return get_entry_frame(table[tab_idx]);
 }
 
-uint32_t map(uint32_t frame, uint32_t offset, uint32_t user)
+uint32_t
+map(uint32_t frame, uint32_t offset, uint32_t user)
 {
     if (frame == 0) return 0;
 
@@ -200,7 +215,7 @@ uint32_t map(uint32_t frame, uint32_t offset, uint32_t user)
     if (!entry_is_present(dir, pd_idx)) {
         uint32_t new_frame = alloc_frame();
         if (new_frame == 0) return 0;
-        write_entry(dir, pd_idx, new_frame, 0);
+        write_entry(dir, pd_idx, new_frame, user);
     }
     
     uint32_t *pagetable = get_pagetable(pd_idx);
@@ -209,7 +224,8 @@ uint32_t map(uint32_t frame, uint32_t offset, uint32_t user)
     return page;
 }
 
-void unmap(uint32_t page)
+void
+unmap(uint32_t page)
 {
     uint32_t *dir = get_pagedir();
     uint32_t dir_idx = get_pagedir_index(page);
@@ -227,18 +243,21 @@ void unmap(uint32_t page)
     invlpg(page);
 }
 
-uint32_t alloc_page(uint32_t offset, uint32_t is_user)
+uint32_t
+alloc_page(uint32_t offset, uint32_t is_user)
 {
     uint32_t frame = alloc_frame();
     return map(frame, offset, is_user);
 }
 
-uint32_t alloc_kpage()
+uint32_t
+alloc_kpage()
 {
     return alloc_page(KERNEL_VBASE, 0);
 }
 
-uint32_t alloc_continuous_pages(uint32_t n)
+uint32_t
+alloc_continuous_pages(uint32_t n)
 {
     if (n == 0) {
         return 0;
@@ -252,13 +271,15 @@ uint32_t alloc_continuous_pages(uint32_t n)
     return page;
 }
 
-void free_page(uint32_t page)
+void
+free_page(uint32_t page)
 {
     free_frame(phys_addr(page));
     unmap(page);
 }
 
-void paging_install(uint32_t total_mem, uint32_t used_mem)
+void
+paging_install(uint32_t total_mem, uint32_t used_mem)
 {
     /* Initialize the bitmap */
     uint32_t total_frame_count = updiv(total_mem, PAGE_SIZE);
@@ -297,8 +318,29 @@ void paging_install(uint32_t total_mem, uint32_t used_mem)
     switch_page_dir((uint32_t)kernel_dir - KERNEL_VBASE);
 }
 
-void switch_page_dir(uint32_t dir)
+void
+switch_page_dir(uint32_t dir)
 {
     extern void __switch_pagedir(uint32_t paddr);
     __switch_pagedir(dir);
+}
+
+uint32_t
+create_user_page_dir()
+{
+    uint32_t frame = alloc_frame();
+    uint32_t *pagedir = (uint32_t *) map(frame, KERNEL_VBASE, 0);
+    memset(pagedir, 0, 4096);
+
+    uint32_t index = get_pagedir_index(KERNEL_VBASE);
+    uint32_t *source = &kernel_dir[index];
+    uint32_t *dest = &pagedir[index];
+    uint32_t count = (1024 - index) * 4;
+    memcpy(dest, source, count);
+
+    write_entry(pagedir, 1023, frame, 0);
+
+    unmap((uint32_t) pagedir);
+
+    return frame;
 }

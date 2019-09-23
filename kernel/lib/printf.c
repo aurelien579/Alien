@@ -12,7 +12,9 @@
  *                          PRIVATE FUNCTIONS
  ******************************************************************************/
 
-static void printchar(char **str, int c) {
+static void
+printchar(char **str, int c)
+{
     if (str) {
         **str = c;
         ++(*str);
@@ -24,7 +26,8 @@ static void printchar(char **str, int c) {
 #define PAD_RIGHT 1
 #define PAD_ZERO 2
 
-static int prints(char **out, const char *string, int width, int pad)
+static int
+prints(char **out, const char *string, int width, int pad)
 {
     register int pc = 0, padchar = ' ';
 
@@ -60,7 +63,8 @@ static int prints(char **out, const char *string, int width, int pad)
 /* the following should be enough for 32 bit int */
 #define PRINT_BUF_LEN 12
 
-static int printi(char **out, int i, int b, int sg, int width, int pad, int letbase)
+static int
+printi(char **out, int i, int b, int sg, int width, int pad, int letbase)
 {
     char print_buf[PRINT_BUF_LEN];
     register char *s;
@@ -102,7 +106,8 @@ static int printi(char **out, int i, int b, int sg, int width, int pad, int letb
     return pc + prints (out, s, width, pad);
 }
 
-static int print(char **out, const char *format, va_list args )
+static int
+print(char **out, const char *format, va_list args )
 {
     register int width, pad;
     register int pc = 0;
@@ -171,7 +176,8 @@ static int print(char **out, const char *format, va_list args )
  *                          PUBLIC FUNCTIONS
  ******************************************************************************/
 
-int printf(const char *format, ...)
+int
+printf(const char *format, ...)
 {
     va_list args;
 
@@ -179,12 +185,14 @@ int printf(const char *format, ...)
     return print(0, format, args);
 }
 
-int vprintf(const char *format, va_list args)
+int
+vprintf(const char *format, va_list args)
 {
     return print(0, format, args);
 }
 
-int sprintf(char *out, const char *format, ...)
+int
+sprintf(char *out, const char *format, ...)
 {
     va_list args;
 

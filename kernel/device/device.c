@@ -23,7 +23,8 @@ static uint32_t devices_count = 0;
  *                          PUBLIC FUNCTIONS
  ******************************************************************************/
 
-struct device *device_find(const char *name)
+struct device *
+device_find(const char *name)
 {
     for (uint32_t i = 0; i < devices_count; i++) {
         if (!strcmp(devices[i].name, name)) {
@@ -34,7 +35,8 @@ struct device *device_find(const char *name)
     return (struct device *) 0;
 }
 
-result_t device_register(const struct device *dev)
+result_t
+device_register(const struct device *dev)
 {
     if (devices_count >= DEVICES_MAX || !dev) return ERROR;
     
@@ -45,7 +47,8 @@ result_t device_register(const struct device *dev)
     return OK;
 }
 
-result_t device_stream_read(struct device *d, uint32_t *size, uint8_t *out)
+result_t
+device_stream_read(struct device *d, uint32_t *size, uint8_t *out)
 {
     if (!d) return ERROR;
     if (!d->read) return ERROR;
@@ -53,7 +56,8 @@ result_t device_stream_read(struct device *d, uint32_t *size, uint8_t *out)
     return d->read(d, size, out);
 }
 
-result_t device_stream_write(struct device *d, uint32_t *size, uint8_t *in)
+result_t
+device_stream_write(struct device *d, uint32_t *size, uint8_t *in)
 {
     if (!d) return ERROR;
     if (!d->write) return ERROR;
@@ -79,4 +83,11 @@ device_random_write(struct device *d, uint32_t addr, uint32_t *sz, uint8_t *in)
     
     d->seek(d, addr); 
     return d->write(d, sz, in);
+}
+
+uint32_t
+device_list(struct device **out_devices)
+{
+    *out_devices = devices;
+    return devices_count;
 }

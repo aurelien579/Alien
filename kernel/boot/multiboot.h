@@ -1,7 +1,7 @@
 /*******************************************************************************
- * SOURCE NAME  : multiboot.c
+ * SOURCE NAME  : multiboot.h
  * AUTHOR       : Aurélien Martin
- * DESCRIPTION  : Implements functions for parsing multiboot informations
+ * DESCRIPTION  : Header of multiboot module
  ******************************************************************************/
 
 #ifndef BOOT_MULTIBOOT_H

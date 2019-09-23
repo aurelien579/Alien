@@ -12,12 +12,12 @@
 #define DEVICES_MAX         10
 #define DEVICE_NAME_MAX     20
 
-#define OK      1
-#define ERROR   2
-
 struct device;
 
+/* Result type enum */
 typedef uint32_t result_t;
+#define OK      1
+#define ERROR   2
 
 enum device_type
 {
@@ -63,5 +63,7 @@ result_t device_random_write(struct device *dev,
                              uint32_t addr,
                              uint32_t *size,
                              uint8_t *in);
+
+uint32_t device_list(struct device **out_devices);
 
 #endif

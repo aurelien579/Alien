@@ -24,12 +24,14 @@ static uint16_t *vgamem = (uint16_t *) 0xC00B8000;
  *                          PRIVATE FUNCTIONS
  ******************************************************************************/
 
-static void vga_write(char c, uint8_t color)
+static void
+vga_write(char c, uint8_t color)
 {
     vgamem[y * 80 + x] = (color << 8) | c;
 }
 
-static void update_cursor()
+static void
+update_cursor()
 {
     uint16_t pos = y * 80 + x;    
     outb(0x3D4, 0x0F);
@@ -40,7 +42,8 @@ static void update_cursor()
     vga_write(' ', 0x07);
 }
 
-static void boot_scroll()
+static void
+boot_scroll()
 {
     memcpy(vgamem, vgamem + 80, 24 * 80 * sizeof(uint16_t));
     memset(vgamem + (24 * 80), 0, 80 * sizeof(uint16_t));
@@ -50,7 +53,8 @@ static void boot_scroll()
  *                          PUBLIC FUNCTIONS
  ******************************************************************************/
 
-void boot_clear()
+void
+boot_clear()
 {
     for (int i = 0; i < 25 * 80; i++)
         vgamem[i] = 0;
@@ -60,7 +64,8 @@ void boot_clear()
     update_cursor();
 }
 
-void boot_putchar(char c)
+void
+boot_putchar(char c)
 {
     if (y >= 25) {
         boot_scroll();
@@ -83,7 +88,8 @@ void boot_putchar(char c)
     update_cursor();
 }
 
-void boot_print(const char *s)
+void
+boot_print(const char *s)
 {
     while (*s) boot_putchar(*s++);
 }

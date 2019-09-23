@@ -46,10 +46,13 @@ static struct gdt_ptr   gdt_ptr;
  *                          PUBLIC FUNCTIONS
  ******************************************************************************/
 
-int gdt_set_entry(uint32_t n, uint32_t base, uint32_t limit, uint8_t access,
-                  uint8_t gran)
+int
+gdt_set_entry(uint32_t n, uint32_t base, uint32_t limit, uint8_t access,
+    uint8_t gran)
 {
-    if (n >= MAX_ENTRIES) return 0;
+    if (n >= MAX_ENTRIES) {
+        return 0;
+    }
 
     gdt[n].base_low = (base & 0xFFFF);
     gdt[n].base_middle = (base >> 16) & 0xFF;
@@ -64,7 +67,8 @@ int gdt_set_entry(uint32_t n, uint32_t base, uint32_t limit, uint8_t access,
     return 1;
 }
 
-void gdt_install()
+void
+gdt_install()
 {
     gdt_set_entry(0, 0, 0, 0, 0);
 

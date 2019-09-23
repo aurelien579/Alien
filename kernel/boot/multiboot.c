@@ -125,7 +125,13 @@ struct mb_mod_list
     uint32_t pad;
 };
 
-static void parse_memmap(struct mb_info *mbi)
+
+/*******************************************************************************
+ *                          PRIVATE FUNCTIONS
+ ******************************************************************************/
+
+static void
+parse_memmap(struct mb_info *mbi)
 {
     mbi->mmap_addr += KERNEL_VBASE;
     struct mb_mmap_entry *mmap = (struct mb_mmap_entry *) mbi->mmap_addr;
@@ -137,7 +143,14 @@ static void parse_memmap(struct mb_info *mbi)
     }
 }
 
-uint8_t parse_boot_info(struct mb_info *mbi)
+
+
+/*******************************************************************************
+ *                          PUBLIC FUNCTIONS
+ ******************************************************************************/
+
+uint8_t
+parse_boot_info(struct mb_info *mbi)
 {
 #if 0
     if (mbi->flags && INFO_CMDLINE)
@@ -145,6 +158,7 @@ uint8_t parse_boot_info(struct mb_info *mbi)
 #endif
 
     if (!(mbi->flags && INFO_MEM_MAP)) return 0;
+    if (!(mbi->flags && INFO_VIDEO_INFO)) return 0;
 
     parse_memmap(mbi);    
 

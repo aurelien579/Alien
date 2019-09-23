@@ -13,8 +13,14 @@ EXTERN __KERNEL_VBASE__, __KERNEL_END__
 MB_MAGIC            equ 0x1BADB002
 MB_MODALIGN         equ 1 << 0
 MB_MEMINFO          equ 1 << 1
-MB_FLAGS            equ MB_MODALIGN | MB_MEMINFO
+MB_USE_GFX	        equ 1 << 2
+MB_FLAGS            equ MB_MODALIGN | MB_MEMINFO | MB_USE_GFX
 MB_CHECKSUM         equ -(MB_MAGIC + MB_FLAGS)
+
+MB_MODE_TYPE        equ 0
+MB_WIDTH            equ 0
+MB_HEIGHT           equ 0
+MB_DEPTH            equ 0
 
 KERNEL_PAGE_NUMBER  equ (0xC0000000 >> 22) ; Page directory index of kernel's 4MB PTE.
 KERNEL_STACKSIZE    equ 0x8000
@@ -23,9 +29,23 @@ KERNEL_STACKSIZE    equ 0x8000
 
 SECTION .multiboot
 align 0x1000
+    ; Required fields
     dd MB_MAGIC
     dd MB_FLAGS
     dd MB_CHECKSUM
+
+    ; Unused fields
+    dd 0 ; header_addr
+	dd 0 ; load_addr
+	dd 0 ; load_end_addr
+	dd 0 ; bss_end_addr
+	dd 0 ; entry_addr
+
+	; Graphics fields
+	dd MB_MODE_TYPE       ; 0 = linear graphics
+	dd MB_WIDTH
+	dd MB_HEIGHT
+	dd MB_DEPTH           ; Set me to 32 or else.
 
 
 

@@ -1,7 +1,8 @@
 /*******************************************************************************
  * SOURCE NAME  : ata.c
  * AUTHOR       : Aurélien Martin
- * DESCRIPTION  : A basic ATA driver only capable of identifying a device.
+ * DESCRIPTION  : A basic ATA driver only capable of identifying and reading
+ * a device.
  ******************************************************************************/
 
 #include <kernel/device/ata.h>
@@ -331,9 +332,7 @@ ata_cmd_identify(struct ata_device *d, uint16_t *buffer)
 }
 
 static uint8_t
-ata_detect(uint16_t base_port,
-           uint16_t control_port,
-           uint8_t  slave_bit,
+ata_detect(uint16_t base_port, uint16_t control_port, uint8_t  slave_bit,
            struct ata_device *device)
 {
     uint8_t status, sector_mid, sector_hi;
@@ -416,9 +415,8 @@ ata_detect(uint16_t base_port,
  * High level functions
  */
 
-static result_t ata_read(struct device *device,
-                         uint32_t *size,
-                         uint8_t *out)
+static result_t
+ata_read(struct device *device, uint32_t *size, uint8_t *out)
 {
     uint32_t size_read = 0;
     uint8_t buffer[512];
@@ -502,7 +500,8 @@ ata_register_device(const char *name,
  *                          PUBLIC FUNCTIONS
  ******************************************************************************/
 
-void ata_install()
+void
+ata_install()
 {
     if (ata_detect(0x1F0, 0x3F6, 0, &ata_devices[0])) {
         ata_register_device("ATA-0", &ata_devices[0]);

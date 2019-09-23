@@ -6,7 +6,8 @@
 
 #include <kernel/boot/console.h>
 
-void putc(char c)
+void
+putc(char c)
 {
     boot_putchar(c);
 }

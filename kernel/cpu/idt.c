@@ -39,20 +39,6 @@ struct idt_ptr
     uint32_t base;
 } __attribute__((packed));
 
-struct isr_frame
-{
-    uint32_t    ds;
-    struct regs regs;
-    uint32_t    int_no;
-    uint32_t    errorcode;
-    uint32_t    eip;
-    uint32_t    cs;
-    uint32_t    eflags;
-    uint32_t    esp;
-    uint32_t    ss;
-} __attribute__((packed));
-
-
 
 /*******************************************************************************
  *                          EXTERN FUNCTIONS
@@ -111,13 +97,11 @@ extern void isr45();
 extern void isr46();
 extern void isr47();
 
-//extern void isr100();
+extern void isr100();
 
 
 /*******************************************************************************
- * 
  *                          PRIVATE GLOBAL VARIABLES
- * 
  ******************************************************************************/
 
 static struct idt_entry     idt[IDT_MAX_ENTRIES];
@@ -126,20 +110,21 @@ static struct idt_ptr       idt_ptr;
 static irq_handler_t        irq_handlers[16];
 static exception_handler_t  exception_handlers[32];
 
-#if 0
-static void syscall_handler(uint32_t ds, struct isr_frame frame)
+static void
+syscall_handler(struct isr_frame frame)
 {
     if (frame.regs.eax == 0x00) {
-        kprintf("%d\n", frame.regs.ebx);
+        printf("%d\n", frame.regs.ebx);
     } else if (frame.regs.eax == 0x01) {
-        fork(frame);
+        //fork(frame);
+        printf("FORK\n");
     } else {
-        kprintf("unknown syscall!\n");
+        printf("unknown syscall!\n");
     }
 }
-#endif
 
-static void exception_handler(uint32_t n, uint32_t code, const struct regs *regs)
+static void
+exception_handler(uint32_t n, uint32_t code, const struct regs *regs)
 {
     if (exception_handlers[n]) {
         exception_handlers[n](n, code, regs);
@@ -151,7 +136,8 @@ static void exception_handler(uint32_t n, uint32_t code, const struct regs *regs
     }
 }
 
-static void irq_handler(uint32_t irq, const struct regs *regs)
+static void
+irq_handler(uint32_t irq, const struct regs *regs)
 {
     if (irq_handlers[irq]) {
         irq_handlers[irq](irq, regs);
@@ -162,12 +148,11 @@ static void irq_handler(uint32_t irq, const struct regs *regs)
 
 
 /*******************************************************************************
- * 
  *                          PUBLIC FUNCTIONS
- * 
  ******************************************************************************/
 
-void idt_install()
+void
+idt_install()
 {
     /* Create the exceptions entries */
     idt_set_entry(0, (uint32_t) isr0, 0x08, IDT_EF_P | IDT_EF_INT);
@@ -221,6 +206,8 @@ void idt_install()
     idt_set_entry(46, (uint32_t) isr46, 0x08, IDT_EF_P | IDT_EF_INT);
     idt_set_entry(47, (uint32_t) isr47, 0x08, IDT_EF_P | IDT_EF_INT);
 
+    idt_set_entry(100, (uint32_t) isr100, 0x08, IDT_EF_P | IDT_EF_INT | IDT_EF_U);
+
     /* Remap irqs */
     outb(MASTER_IRQ_COMMAND, 0x11);     /* initialize master IRQ */
     outb(SLAVE_IRQ_COMMAND, 0x11);      /* initialize slave IRQ */
@@ -244,7 +231,8 @@ void idt_install()
     asm volatile ("sti");
 }
 
-int idt_set_entry(uint32_t n, uint32_t offset, uint8_t selector, uint8_t flags)
+int
+idt_set_entry(uint32_t n, uint32_t offset, uint8_t selector, uint8_t flags)
 {
     if (n >= IDT_MAX_ENTRIES) return 0;
 
@@ -258,23 +246,28 @@ int idt_set_entry(uint32_t n, uint32_t offset, uint8_t selector, uint8_t flags)
     return 1;
 }
 
-void irq_ack(uint32_t irq)
+void
+irq_ack(uint32_t irq)
 {
     if (irq >= 8)
         outb(SLAVE_IRQ_COMMAND, 0x20);
     outb(MASTER_IRQ_COMMAND, 0x20);
 }
 
-void interrupt_handler(struct isr_frame frame)
+void
+interrupt_handler(struct isr_frame frame)
 {
     if (frame.int_no < 32) {
         exception_handler(frame.int_no, frame.errorcode, &frame.regs);
+    } else if (frame.int_no == 100) {
+        syscall_handler(frame);
     } else {
         irq_handler(frame.int_no - 32, &frame.regs);
     }
 }
 
-void enable_irq(uint32_t irq)
+void
+enable_irq(uint32_t irq)
 {
     if (irq < 8) {
         uint8_t mask = inb(MASTER_IRQ_DATA);
@@ -285,12 +278,14 @@ void enable_irq(uint32_t irq)
     }
 }
 
-void set_irq_handler(uint32_t irq, irq_handler_t handler)
+void
+set_irq_handler(uint32_t irq, irq_handler_t handler)
 {
     if (irq < 16) irq_handlers[irq] = handler;
 }
 
-void set_exception_handler(uint32_t n, exception_handler_t handler)
+void
+set_exception_handler(uint32_t n, exception_handler_t handler)
 {
     if (n < 32) exception_handlers[n] = handler;
 }
